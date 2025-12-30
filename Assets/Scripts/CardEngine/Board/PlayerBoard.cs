@@ -2,7 +2,7 @@ using UnityEngine;
 using Assets.Scripts.CardEngine.Game;
 
 
-namespace Assets.Scripts
+namespace Assets.Scripts.CardEngine.Board
 {
     public class PlayerArea
     {
@@ -21,11 +21,11 @@ namespace Assets.Scripts
 
     public class PlayerBoard
     {
-        private Player _player;
+        private readonly Player _player;
         private readonly GameObject _boardInstance;
 
-        private readonly GameObject _handArea;
-        public GameObject HandArea => _handArea;
+        private readonly HandController _handController;
+        public HandController HandController => _handController;
         public GameObject BoardInstance => _boardInstance;
 
         private Vector3 GetPlayerBoardPosition(GameObject mainBoard, GameObject playerBoard, bool isLocalPlayer)
@@ -64,29 +64,34 @@ namespace Assets.Scripts
         public PlayerBoard(Player player, GameController gameController)
         {
             _player = player;
-            Vector3 boardPosition = GetPlayerBoardPosition(gameController.BoardObject, gameController.PlayerBoardObject, player.IsLocalPlayer);
+            Vector3 boardPosition = GetPlayerBoardPosition(gameController.Board, gameController.PlayerBoardPrefab, player.IsLocalPlayer);
 
             if (player.IsLocalPlayer)
             {
                 _boardInstance = GameObject.Instantiate(
-                    original: gameController.PlayerBoardObject,
+                    original: gameController.PlayerBoardPrefab,
                     position: boardPosition,
                     rotation: UnityEngine.Quaternion.identity,
-                    parent: gameController.BoardObject.transform
+                    parent: gameController.Board.transform
                 );
                 _boardInstance.transform.Find("PlayArea").gameObject.tag = PlayerArea.Local.ToString();
             }
             else
             {
                 _boardInstance = GameObject.Instantiate(
-                    original: gameController.PlayerBoardObject,
+                    original: gameController.PlayerBoardPrefab,
                     position: boardPosition,
                     rotation: UnityEngine.Quaternion.Euler(0, 180, 0),
-                    parent: gameController.BoardObject.transform
+                    parent: gameController.Board.transform
                 );
                 _boardInstance.transform.Find("PlayArea").gameObject.tag = PlayerArea.Opponent.ToString();
             }
-            _handArea = _boardInstance.transform.Find("HandArea").gameObject;
+            _handController = _boardInstance.GetComponentInChildren<HandController>();
+            _handController.GameController = gameController;
+            if (_handController == null)
+            {
+                Debug.LogError("PlayerBoard: HandController component not found in PlayerBoard prefab.");
+            }
         }
 
     }

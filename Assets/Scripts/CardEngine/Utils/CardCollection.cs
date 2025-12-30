@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Assets.Scripts.CardEngine.Cards;
@@ -9,6 +10,7 @@ namespace Assets.Scripts.CardEngine.Utils
     {
         private readonly List<Card> _cards;
         private static readonly Random _rng = new();
+        public IReadOnlyList<Card> Cards => _cards.AsReadOnly(); 
 
         public CardCollection(List<Card> cards)
         {
@@ -18,10 +20,9 @@ namespace Assets.Scripts.CardEngine.Utils
 
         public CardCollection()
         {
-            this._cards = new();
+            _cards = new();
         }
 
-        public IReadOnlyList<Card> GetCards => _cards.AsReadOnly();
         public int Count => _cards.Count;
 
 

@@ -48,6 +48,11 @@ namespace Assets.Scripts.CardEngine.Utils
             _cards.Add(card);
         }
 
+        public void InsertCardAt(Card card, int index)
+        {
+            _cards.Insert(index, card);
+        }
+
         public bool TakeCard(Card card)
         {
             return _cards.Remove(card);

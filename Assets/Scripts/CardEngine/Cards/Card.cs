@@ -4,7 +4,7 @@ using Assets.Scripts.CardEngine.Cards;
 
 namespace Assets.Scripts.CardEngine.Cards
 {
-    public class Card : ITargetable
+    public class Card: ITargetable
     {
         public string Id { get; set; }
         public string Name { get; set; }
@@ -16,11 +16,10 @@ namespace Assets.Scripts.CardEngine.Cards
 
         public void PlayFromHand(PlayAreaZone zone)
         {
-            if (GameState != null && Owner != null && Owner.Hand != null && Owner.Hand.RemoveCard(this))
-            {
-                // CardView handles zone occupancy and reparenting
-                GameState.PlayCard(this, Owner);
-            }
+            if (GameState == null || Owner == null)
+                return;
+
+            GameState.TryMoveToZone(this, Owner.Hand, zone);
         }
 
         

@@ -21,14 +21,17 @@ namespace Assets.Scripts.CardEngine.Board
 
     public class PlayerBoard
     {
-        private readonly Player _player;
         private readonly GameObject _boardInstance;
-
         private readonly HandController _handController;
+        private readonly DeckController _deckController;
+        private readonly PlayAreaController _playAreaController;
+        public DeckController DeckController => _deckController;
         public HandController HandController => _handController;
+        public PlayAreaController PlayAreaController => _playAreaController;
         public GameObject BoardInstance => _boardInstance;
 
-        private Vector3 GetPlayerBoardPosition(GameObject mainBoard, GameObject playerBoard, bool isLocalPlayer)
+
+        private static Vector3 GetPlayerBoardPosition(GameObject mainBoard, GameObject playerBoard, bool isLocalPlayer)
         {
             var mainBoardRenderer = mainBoard.GetComponent<Renderer>();
             float mainBoardTopY = 0f;
@@ -63,7 +66,6 @@ namespace Assets.Scripts.CardEngine.Board
 
         public PlayerBoard(Player player, GameController gameController)
         {
-            _player = player;
             Vector3 boardPosition = GetPlayerBoardPosition(gameController.Board, gameController.PlayerBoardPrefab, player.IsLocalPlayer);
 
             if (player.IsLocalPlayer)
@@ -86,11 +88,28 @@ namespace Assets.Scripts.CardEngine.Board
                 );
                 _boardInstance.transform.Find("PlayArea").gameObject.tag = PlayerArea.Opponent.ToString();
             }
+
             _handController = _boardInstance.GetComponentInChildren<HandController>();
-            _handController.GameController = gameController;
+            _deckController = _boardInstance.GetComponentInChildren<DeckController>();
+            _playAreaController = _boardInstance.GetComponentInChildren<PlayAreaController>();
+            if (_handController != null)
+                _handController.GameController = gameController;
+            if (_deckController != null)
+                _deckController.GameController = gameController;
+            if (_playAreaController != null)
+                _playAreaController.Initialize(gameController);
+            
             if (_handController == null)
             {
                 Debug.LogError("PlayerBoard: HandController component not found in PlayerBoard prefab.");
+            }
+            if (_deckController == null)
+            {
+                Debug.LogError("PlayerBoard: DeckController component not found in PlayerBoard prefab.");
+            }
+            if (_playAreaController == null)
+            {
+                Debug.LogError("PlayerBoard: PlayAreaZoneController component not found in PlayerBoard prefab.");
             }
         }
 

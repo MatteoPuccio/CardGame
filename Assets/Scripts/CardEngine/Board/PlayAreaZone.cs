@@ -1,14 +1,10 @@
-using UnityEngine;
 using System;
-using System.Collections.Generic;
 using Assets.Scripts.CardEngine.Cards;
+using Assets.Scripts.CardEngine.Game;
 
 namespace Assets.Scripts.CardEngine.Board
 {
-    /// <summary>
-    /// Model for a single zone: Unity-free, pure data.
-    /// </summary>
-    public class PlayAreaZone
+    public class PlayAreaZone: ICardZone
     {
         public int ZoneIndex { get; set; }
         public Card OccupyingCard { get; private set; }
@@ -16,6 +12,7 @@ namespace Assets.Scripts.CardEngine.Board
 
         public event Action<Card> OnCardAssigned;
         public event Action OnCardRemoved;
+        public string ZoneName => $"PlayAreaZone_{ZoneIndex}";
 
         public bool TryOccupy(Card card)
         {
@@ -29,6 +26,24 @@ namespace Assets.Scripts.CardEngine.Board
         {
             OccupyingCard = null;
             OnCardRemoved?.Invoke();
+        }
+
+        public bool CanEnter(Card card)
+        {
+            return !IsOccupied;
+        }
+
+        public bool EnterCard(Card card)
+        {
+            return TryOccupy(card);
+        }
+
+        public bool ExitCard(Card card)
+        {
+            if (OccupyingCard != card)
+                return false;
+            Vacate();
+            return true;
         }
     }
 

@@ -7,7 +7,7 @@ using Assets.Scripts.CardEngine.Utils;
 using UnityEngine;
 namespace Assets.Scripts.CardEngine.Game
 {
-    public class Hand
+    public class Hand: ICardZone
     {
         private readonly CardCollection _cards;
         public int CardCount => _cards.Count;
@@ -20,6 +20,7 @@ namespace Assets.Scripts.CardEngine.Game
 
         public event Action<Card> CardAdded;
         public event Action<Card> CardRemoved;
+        public string ZoneName => "Hand";
 
         public Hand(Player owner = null, GameState gameState = null, List<Card> cards = null)
         {
@@ -45,5 +46,21 @@ namespace Assets.Scripts.CardEngine.Game
             return removed;
         }
 
+        public bool CanEnter(Card card)
+        {
+            return true;
+        }
+
+        public bool EnterCard(Card card)
+        {
+            AddCard(card);
+            return true;
+        }
+
+        public bool ExitCard(Card card)
+        {
+            RemoveCard(card);
+            return true;
+        }
     }
 }

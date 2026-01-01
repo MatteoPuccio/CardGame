@@ -8,11 +8,14 @@ namespace Assets.Scripts.CardEngine.Game
     public class HandView : MonoBehaviour
     {
         private readonly List<CardView> _cardViews = new();
-
+        
         public void AddCardView(CardView cardView)
         {
-            cardView.transform.SetParent(this.transform, false);
-            _cardViews.Add(cardView);
+            if (!_cardViews.Contains(cardView))
+                _cardViews.Add(cardView);
+
+            cardView.transform.SetParent(this.transform, true);
+            cardView.SetState(new CardInHandState(this));
             UpdateCardPositions();
         }
 
@@ -22,7 +25,7 @@ namespace Assets.Scripts.CardEngine.Game
             UpdateCardPositions();
         }
 
-        private void UpdateCardPositions()
+        public void UpdateCardPositions()
         {
             float spacing = 0.1f;
             float startX = -((_cardViews.Count - 1) * spacing) / 2f;
@@ -31,6 +34,20 @@ namespace Assets.Scripts.CardEngine.Game
             {
                 _cardViews[i].transform.localPosition = new Vector3(startX + i * spacing, 0, 0);
             }
+        }
+
+        public void ReturnCard(CardView card)
+        {
+            if (!_cardViews.Contains(card))
+                _cardViews.Add(card);
+
+            // Preserve world scale/rotation when reparenting; avoids scale jump if HandView is scaled.
+            card.transform.SetParent(transform, true);
+            card.transform.localPosition = Vector3.zero;
+            card.transform.localRotation = Quaternion.identity;
+
+            card.SetState(new CardInHandState(this));
+            UpdateCardPositions();
         }
     }
 }

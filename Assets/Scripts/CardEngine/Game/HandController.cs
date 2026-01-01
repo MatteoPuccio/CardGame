@@ -8,21 +8,24 @@ namespace Assets.Scripts.CardEngine.Game
 {
     public class HandController : MonoBehaviour
     {
-        [SerializeField] private HandView handView;
+        [SerializeField] private HandView _handView;
+
+        private Hand _hand;
+        private readonly Dictionary<Card, CardView> bindings = new();
+
         public GameController GameController { get; set; }
 
-        private Hand hand;
-        private readonly Dictionary<Card, CardView> bindings = new();
 
         public void Initialize(Hand hand)
         {
-            this.hand = hand;
+            _hand = hand;
 
-            hand.CardAdded += OnCardAdded;
-            hand.CardRemoved += OnCardRemoved;
+            _hand.CardAdded += OnCardAdded;
+            _hand.CardRemoved += OnCardRemoved;
 
-            foreach (var card in hand.Cards)
+            foreach (var card in _hand.Cards)
                 CreateView(card);
+            _handView.UpdateCardPositions();
         }
 
         private void OnCardAdded(Card card)
@@ -32,7 +35,7 @@ namespace Assets.Scripts.CardEngine.Game
             {
                 var view = card.CardView;
                 bindings[card] = view;
-                handView.AddCardView(view);
+                _handView.AddCardView(view);
             }
             else
             {
@@ -44,15 +47,17 @@ namespace Assets.Scripts.CardEngine.Game
         {
             var view = bindings[card];
             bindings.Remove(card);
-            handView.RemoveCardView(view);
+            _handView.RemoveCardView(view);
         }
 
         private void CreateView(Card card)
         {
-            CardView view = GameController.CardFactory.CreateCard(card, hand.Owner, hand.GameState);
+            CardView view = GameController.CardFactory.CreateCard(card, _hand.Owner, _hand.GameState);
+            view.SetState(new CardInHandState(_handView));
             bindings[card] = view;
             card.CardView = view;
-            handView.AddCardView(view);
+            _handView.AddCardView(view);
+            _handView.UpdateCardPositions();
         }
     }
 }

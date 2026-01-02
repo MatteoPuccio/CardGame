@@ -12,11 +12,11 @@ namespace Assets.Scripts.CardEngine.Effects
         }
 
         public void Resolve()
-        {
+        {   
             while (Stack.Count > 0)
             {
                 var (effect, context) = Stack.Dequeue();
-                effect.Apply(context);
+                effect.Resolve(context);
             }
         }
     }

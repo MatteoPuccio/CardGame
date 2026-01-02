@@ -9,7 +9,7 @@ namespace Assets.Scripts.CardEngine.Cards
         [SerializeField] private GameObject _cardPrefab;
         [SerializeField] private GameObject _board;
 
-        public CardView CreateCard(Card card, Player owner = null, GameState gameState = null)
+        public CardView CreateCard(Card card, GameState gameState = null, CardViewRegistry registry = null)
         {
             Debug.Log("CardFactory: Creating card view: " + card.Name);
             if (_cardPrefab == null)
@@ -19,13 +19,12 @@ namespace Assets.Scripts.CardEngine.Cards
             }
             var cardGO = Object.Instantiate(original: _cardPrefab, parent: _board.transform);
             cardGO.name = $"Card_{card.Name}";
-            card.Owner = owner;
             card.GameState = gameState;
             var cardView = cardGO.GetComponent<CardView>();
             if (cardView != null)
             {
                 cardView.CardData = card;
-                card.CardView = cardView;
+                registry?.Register(card, cardView);
             }
             return cardView;
         }

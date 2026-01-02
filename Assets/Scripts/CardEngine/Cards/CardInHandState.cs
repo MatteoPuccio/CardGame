@@ -9,6 +9,7 @@ namespace Assets.Scripts.CardEngine.Cards
         private bool isDragging;
         private Vector3 dragPlaneOrigin;
         public HandView OwnerHandView { get; private set;}
+        public string GetName => "CardInHandState";
 
         public CardInHandState(HandView ownerHandView)
         {
@@ -66,8 +67,7 @@ namespace Assets.Scripts.CardEngine.Cards
 
                 view.OccupiedZone = zone;
                 view.OccupiedZoneView = zoneView;
-                
-                view.SetState(new CardInPlayState(zoneView));
+                view.CardData.Play(view.CardData.Owner.Hand);
                 return;
             }
             OwnerHandView.ReturnCard(view);

@@ -37,16 +37,14 @@ namespace Assets.Scripts.CardEngine.Game
 
         private void OnCardAdded(Card card)
         {
-            if (card.CardView != null)
+            if (GameController?.CardViewRegistry != null && GameController.CardViewRegistry.TryGet(card, out var existingView))
             {
-                var view = card.CardView;
-                bindings[card] = view;
-                _deckView.AddCardView(view);
+                bindings[card] = existingView;
+                _deckView.AddCardView(existingView);
+                return;
             }
-            else
-            {
-                CreateView(card);
-            }
+
+            CreateView(card);
         }
 
         private void OnCardRemoved(Card card)
@@ -68,10 +66,9 @@ namespace Assets.Scripts.CardEngine.Game
                 Debug.LogError("DeckController: CardFactory reference is null in GameController. Cannot create CardView.");
                 return;
             }
-            CardView cardView = GameController.CardFactory.CreateCard(card, _deck.Owner, _deck.GameState);
+            CardView cardView = GameController.CardFactory.CreateCard(card, _deck.GameState, GameController?.CardViewRegistry);
             cardView.SetState(new CardInDeckState(_deckView));
             bindings[card] = cardView;
-            card.CardView = cardView;
             _deckView.AddCardView(cardView);
         }
     }

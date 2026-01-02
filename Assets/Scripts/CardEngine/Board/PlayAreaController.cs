@@ -4,6 +4,7 @@ using UnityEngine;
 using Assets.Scripts.CardEngine.Cards;
 
 
+
 namespace Assets.Scripts.CardEngine.Board
 {
     public class PlayAreaController : MonoBehaviour
@@ -59,18 +60,26 @@ namespace Assets.Scripts.CardEngine.Board
             if (card == null)
                 return;
 
-            // Reuse the existing view when moving a card into the zone.
-            // Creating/destroying views here conflicts with Deck/Hand controllers that also manage the same CardView.
-            var view = card.CardView != null ? card.CardView : _cardFactory.CreateCard(card, card.Owner, card.GameState);
-            if (view == null)
+            CardView cardView = null;
+            if (GameController?.CardViewRegistry != null)
+                GameController.CardViewRegistry.TryGet(card, out cardView);
+
+            if (cardView == null)
+                cardView = _cardFactory.CreateCard(card, card.GameState, GameController?.CardViewRegistry);
+
+            if (cardView == null)
                 return;
+
+            // Ensure this view is discoverable for reuse by other controllers.
+            if (GameController?.CardViewRegistry != null && cardView.CardData != null)
+                GameController.CardViewRegistry.Register(cardView.CardData, cardView);
 
             if (zoneViews.TryGetValue(zone, out var zoneView) && zoneView != null)
             {
-                view.transform.SetParent(zoneView.CardContainer ?? zoneView.transform, true);
-                view.transform.localPosition = Vector3.zero;
-                view.SetState(new CardInPlayState(zoneView));
-                cardViews[zone] = view;
+                cardView.transform.SetParent(zoneView.CardContainer ?? zoneView.transform, true);
+                cardView.transform.localPosition = Vector3.zero;
+                cardView.SetState(new CardInPlayState(zoneView));
+                cardViews[zone] = cardView;
             }
         }
     

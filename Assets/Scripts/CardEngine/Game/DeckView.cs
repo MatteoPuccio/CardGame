@@ -15,6 +15,7 @@ namespace Assets.Scripts.CardEngine.Game
                 _cardViews.Add(cardView);
 
             cardView.transform.SetParent(this.transform, true);
+            cardView.SetState(new CardInDeckState(this));
             UpdateCardPositions();
         }
 

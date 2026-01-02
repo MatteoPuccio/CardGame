@@ -1,6 +1,7 @@
+using System.Collections.Generic;
 using Assets.Scripts.CardEngine.Game;
-using Assets.Scripts.CardEngine.Board;
-using Assets.Scripts.CardEngine.Cards;
+using Assets.Scripts.CardEngine.Effects;
+
 
 namespace Assets.Scripts.CardEngine.Cards
 {
@@ -9,19 +10,36 @@ namespace Assets.Scripts.CardEngine.Cards
         public string Id { get; set; }
         public string Name { get; set; }
         public CardType CardType { get; set; }
-        public CardView CardView { get; set; }
 
-        public Player Owner { get; set; }
+        public Player Owner { get; }
         public GameState GameState { get; set; }
+        public IEffect OnPlayEffect { get; set; }
 
-        public void PlayFromHand(PlayAreaZone zone)
+        public Card(
+            string id, 
+            string name, 
+            CardType cardType, 
+            Player owner, 
+            IEffect effect = null,
+            GameState gameState = null
+        )
         {
-            if (GameState == null || Owner == null)
-                return;
-
-            GameState.TryMoveToZone(this, Owner.Hand, zone);
+            Id = id;
+            Name = name;
+            CardType = cardType;
+            Owner = owner;
+            OnPlayEffect = effect;
+            GameState = gameState;
         }
 
-        
+        public void Play(ICardZone sourceZone)
+        {
+            EffectContext context = new EffectContext
+            {
+                Source = this,
+                GameState = GameState,
+            };
+            OnPlayEffect?.Resolve(context);
+        }
     }
 }

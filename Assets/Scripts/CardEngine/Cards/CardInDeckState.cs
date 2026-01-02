@@ -1,6 +1,6 @@
 using UnityEngine;
 using Assets.Scripts.CardEngine.Game;
-
+using Assets.Scripts.CardEngine.Board;
 namespace Assets.Scripts.CardEngine.Cards
 {
     public class CardInDeckState : ICardInteractionState
@@ -12,7 +12,8 @@ namespace Assets.Scripts.CardEngine.Cards
         {
             OwnerDeckView = ownerDeckView;
         }
-
+        
+        public string GetName => "CardInDeckState";
 
         public void Enter(CardView view)
         {
@@ -24,8 +25,7 @@ namespace Assets.Scripts.CardEngine.Cards
         {
             if (view.CardData?.GameState == null)
                 return;
-
-            view.CardData.GameState.TryMoveToZone(view.CardData, view.CardData.Owner.Deck, view.CardData.Owner.Hand);
+            view.CardData.GameState.TryMoveToZone(view.CardData, view.CardData.Owner.Deck, view.CardData.Owner.Hand, this);
 
             view.OccupiedZone = null;
             view.OccupiedZoneView = null;

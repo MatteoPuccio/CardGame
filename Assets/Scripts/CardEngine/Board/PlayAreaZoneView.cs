@@ -5,9 +5,6 @@ using Assets.Scripts.CardEngine.Cards;
 
 namespace Assets.Scripts.CardEngine.Board
 {
-    /// <summary>
-    /// MonoBehaviour view for a zone: handles transforms and card parenting.
-    /// </summary>
     public class PlayAreaZoneView : MonoBehaviour
     {
         public int ZoneIndex { get; set; }
@@ -20,6 +17,7 @@ namespace Assets.Scripts.CardEngine.Board
     
             cardView.transform.SetParent(CardContainer, true);
             cardView.transform.localPosition = Vector3.up * 0.01f;
+            cardView.SetState(new CardInPlayState(this));
         }
     
     }

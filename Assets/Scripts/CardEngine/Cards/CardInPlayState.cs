@@ -11,6 +11,7 @@ namespace Assets.Scripts.CardEngine.Cards
         {
             OccupiedZoneView = occupiedZoneView;
         }
+        public string GetName => "CardInPlayState";
 
         public void Enter(CardView view)
         {
@@ -29,10 +30,9 @@ namespace Assets.Scripts.CardEngine.Cards
             bool moved = toDeck
                 ? view.CardData.GameState.TryMoveToZone(view.CardData, view.OccupiedZone, view.CardData.Owner.Deck)
                 : view.CardData.GameState.TryMoveToZone(view.CardData, view.OccupiedZone, view.CardData.Owner.Hand);
-
+            
             if (!moved)
                 return;
-
             view.OccupiedZone = null;
             view.OccupiedZoneView = null;
         }

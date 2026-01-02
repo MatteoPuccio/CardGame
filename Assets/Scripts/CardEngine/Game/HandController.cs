@@ -30,17 +30,15 @@ namespace Assets.Scripts.CardEngine.Game
 
         private void OnCardAdded(Card card)
         {
-            // Reuse existing view if the card already has one (e.g., moved back from board)
-            if (card.CardView != null)
+            // Reuse an existing view if it was already created elsewhere (e.g., moved back from board)
+            if (GameController?.CardViewRegistry != null && GameController.CardViewRegistry.TryGet(card, out var existingView))
             {
-                var view = card.CardView;
-                bindings[card] = view;
-                _handView.AddCardView(view);
+                bindings[card] = existingView;
+                _handView.AddCardView(existingView);
+                return;
             }
-            else
-            {
-                CreateView(card);
-            }
+
+            CreateView(card);
         }
 
         private void OnCardRemoved(Card card)
@@ -52,10 +50,9 @@ namespace Assets.Scripts.CardEngine.Game
 
         private void CreateView(Card card)
         {
-            CardView view = GameController.CardFactory.CreateCard(card, _hand.Owner, _hand.GameState);
+            CardView view = GameController.CardFactory.CreateCard(card, _hand.GameState, GameController?.CardViewRegistry);
             view.SetState(new CardInHandState(_handView));
             bindings[card] = view;
-            card.CardView = view;
             _handView.AddCardView(view);
             _handView.UpdateCardPositions();
         }

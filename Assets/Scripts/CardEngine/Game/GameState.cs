@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Assets.Scripts.CardEngine.Board;
 using Assets.Scripts.CardEngine.Cards;
 using Assets.Scripts.CardEngine.Events;
 using UnityEngine;
@@ -41,18 +40,23 @@ namespace Assets.Scripts.CardEngine.Game
             _eventBus.Publish(new CardPlayedEvent(card, player));
         }
 
-        public bool TryMoveToZone(Card card, ICardZone fromZone, ICardZone toZone)
+        public bool TryMoveToZone(Card card, ICardZone fromZone, ICardZone toZone, ICardInteractionState interactionState = null)
         {
-            if (card == null || toZone == null || fromZone == null)
+            Debug.Log("InteractionState: " + (interactionState == null ? "null" : interactionState.GetName));
+            if (card == null || toZone == null || fromZone == null) {
+                Debug.LogError($"Card: {(card == null ? "null" : card.Name)}, FromZone: {(fromZone == null ? "null" : fromZone.ZoneName)}, ToZone: {(toZone == null ? "null" : toZone.ZoneName)}");
                 return false;
+            }
             Player owner = card.Owner;
-            if (owner == null || owner != ActivePlayer)
+            if (owner == null) // || owner != ActivePlayer
             {
                 return false;
             }
             bool canMove = toZone.CanEnter(card);
-            if (!canMove)
+            if (!canMove) {
+                _eventBus.Publish(new CardPlayedEvent("CardMoveFailed", card, owner, from: fromZone.ZoneName, to: toZone.ZoneName));
                 return false;
+            }
             fromZone.ExitCard(card);
             toZone.EnterCard(card);
             _eventBus.Publish(new CardPlayedEvent("CardMoved", card, owner, from: fromZone.ZoneName, to: toZone.ZoneName));

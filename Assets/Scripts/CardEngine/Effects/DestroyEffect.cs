@@ -5,9 +5,9 @@ namespace Assets.Scripts.CardEngine.Effects
 {
     public class DestroyEffect : IEffect
     {
-        public void Resolve(EffectContext context)
+        public void Resolve(EffectContext effectContext)
         {
-            foreach (var target in context.Targets)
+            foreach (var target in effectContext.Targets)
             {
                 if (target is Card card)
                 {
@@ -15,7 +15,7 @@ namespace Assets.Scripts.CardEngine.Effects
                     card.GameState.TryMoveToZone(
                         card,
                         playAreaZone,
-                        card.Owner.Deck
+                        card.Owner.Cemetery
                     );
                 }
             }

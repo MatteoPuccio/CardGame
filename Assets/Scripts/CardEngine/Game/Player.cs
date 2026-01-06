@@ -10,6 +10,7 @@ namespace Assets.Scripts.CardEngine.Game
         public uint Life;
         public Deck Deck;
         public Hand Hand;
+        public Cemetery Cemetery;
         public List<PlayAreaZone> PlayZones;
         public bool IsLocalPlayer;
 

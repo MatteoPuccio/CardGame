@@ -59,8 +59,7 @@ namespace Assets.Scripts.CardEngine.Game
 
         public bool ExitCard(Card card)
         {
-            RemoveCard(card);
-            return true;
+			return RemoveCard(card);
         }
     }
 }

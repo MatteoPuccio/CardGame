@@ -13,6 +13,7 @@ namespace Assets.Scripts.CardEngine.Game
 
         public TurnPhase Phase { get; private set; }
         public Player ActivePlayer { get; private set; }
+        public int TurnNumber { get; private set; }
 
         private readonly EventBus _eventBus;
 
@@ -29,6 +30,22 @@ namespace Assets.Scripts.CardEngine.Game
             Player2 = p2;
             ActivePlayer = Player1;
             Phase = TurnPhase.Draw;
+            TurnNumber = 1;
+        }
+
+        internal void SetPhase(TurnPhase phase)
+        {
+            Phase = phase;
+        }
+
+        internal void SetActivePlayer(Player player)
+        {
+            ActivePlayer = player;
+        }
+
+        internal void IncrementTurnNumber()
+        {
+            TurnNumber++;
         }
 
         public Player GetOpponent(Player player) =>
@@ -57,8 +74,21 @@ namespace Assets.Scripts.CardEngine.Game
                 _eventBus.Publish(new CardPlayedEvent("CardMoveFailed", card, owner, from: fromZone.ZoneName, to: toZone.ZoneName));
                 return false;
             }
-            fromZone.ExitCard(card);
-            toZone.EnterCard(card);
+            bool exited = fromZone.ExitCard(card);
+            if (!exited)
+            {
+                _eventBus.Publish(new CardPlayedEvent("CardMoveFailed", card, owner, from: fromZone.ZoneName, to: toZone.ZoneName));
+                return false;
+            }
+
+            bool entered = toZone.EnterCard(card);
+            if (!entered)
+            {
+                // Best-effort rollback.
+                fromZone.EnterCard(card);
+                _eventBus.Publish(new CardPlayedEvent("CardMoveFailed", card, owner, from: fromZone.ZoneName, to: toZone.ZoneName));
+                return false;
+            }
             _eventBus.Publish(new CardPlayedEvent("CardMoved", card, owner, from: fromZone.ZoneName, to: toZone.ZoneName));
             return canMove;
         }

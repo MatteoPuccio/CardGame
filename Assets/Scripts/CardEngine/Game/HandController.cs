@@ -11,6 +11,7 @@ namespace Assets.Scripts.CardEngine.Game
         [SerializeField] private HandView _handView;
 
         private Hand _hand;
+        private CardFactory _cardFactory;
         private readonly Dictionary<Card, CardView> bindings = new();
 
         public GameController GameController { get; set; }
@@ -18,7 +19,23 @@ namespace Assets.Scripts.CardEngine.Game
 
         public void Initialize(Hand hand)
         {
+            if (hand == null)
+                throw new System.ArgumentNullException(nameof(hand));
+
             _hand = hand;
+
+            if (_handView == null)
+                _handView = GetComponentInChildren<HandView>(includeInactive: true);
+
+            if (_handView == null)
+                throw new System.InvalidOperationException("HandController: HandView reference is null.");
+
+            if (GameController == null)
+                throw new System.InvalidOperationException("HandController: GameController is not set before Initialize().");
+
+            _cardFactory = GameController.CardFactory;
+            if (_cardFactory == null)
+                throw new System.InvalidOperationException("HandController: GameController.CardFactory is null.");
 
             _hand.CardAdded += OnCardAdded;
             _hand.CardRemoved += OnCardRemoved;
@@ -43,14 +60,22 @@ namespace Assets.Scripts.CardEngine.Game
 
         private void OnCardRemoved(Card card)
         {
-            var view = bindings[card];
+            if (card == null)
+                return;
+
+            if (!bindings.TryGetValue(card, out var view) || view == null)
+                return;
+
             bindings.Remove(card);
             _handView.RemoveCardView(view);
         }
 
         private void CreateView(Card card)
         {
-            CardView view = GameController.CardFactory.CreateCard(card, _hand.GameState, GameController?.CardViewRegistry);
+            if (card == null)
+                return;
+
+            CardView view = _cardFactory.CreateCard(card, _hand.GameState, GameController?.CardViewRegistry);
             view.SetState(new CardInHandState(_handView));
             bindings[card] = view;
             _handView.AddCardView(view);

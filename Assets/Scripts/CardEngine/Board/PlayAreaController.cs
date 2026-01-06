@@ -11,6 +11,8 @@ namespace Assets.Scripts.CardEngine.Board
     {
         [SerializeField] private PlayArea _playArea;
         [SerializeField] private CardFactory _cardFactory;
+
+        private bool _initialized;
     
         private readonly Dictionary<PlayAreaZone, PlayAreaZoneView> zoneViews = new();
         private readonly Dictionary<PlayAreaZone, CardView> cardViews = new();
@@ -29,24 +31,25 @@ namespace Assets.Scripts.CardEngine.Board
                 _cardFactory = gameController.CardFactory;
 
             if (_playArea == null)
-                Debug.LogError("PlayAreaController: _playArea is not assigned and could not be found in children.");
+                throw new System.InvalidOperationException("PlayAreaController: _playArea is not assigned and could not be found in children.");
 
             if (_cardFactory == null)
-                Debug.LogError("PlayAreaController: _cardFactory is not assigned and could not be obtained from GameController.");
+                throw new System.InvalidOperationException("PlayAreaController: _cardFactory is not assigned and could not be obtained from GameController.");
+
+            _initialized = true;
         }
 
         public void InitializeZones()
         {
-            if (_playArea == null || _cardFactory == null)
-            {
-                Debug.LogError("PlayAreaController: InitializeZones called before Initialize() or without required references.");
-                return;
-            }
+            if (!_initialized)
+                throw new System.InvalidOperationException("PlayAreaController: InitializeZones called before Initialize().");
 
             foreach (var zone in _playArea.Zones)
             {
                 var zoneGO = Instantiate(_playArea.zonePrefab, _playArea.transform);
                 var view = zoneGO.GetComponent<PlayAreaZoneView>();
+                if (view == null)
+                    view = zoneGO.AddComponent<PlayAreaZoneView>();
                 view.ZoneIndex = zone.ZoneIndex;
                 zoneViews[zone] = view;
     

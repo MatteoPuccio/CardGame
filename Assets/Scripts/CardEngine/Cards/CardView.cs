@@ -1,6 +1,7 @@
 using UnityEngine;
 using Assets.Scripts.CardEngine.Board;
 using Assets.Scripts.CardEngine.Game;
+using TMPro;
 
 namespace Assets.Scripts.CardEngine.Cards
 {
@@ -12,6 +13,10 @@ namespace Assets.Scripts.CardEngine.Cards
         public float dragHeightOffset = 0.5f;
         public float placeHeightOffset = 0.1f;
         public float zoneRaycastDistance = 2f;
+
+        [Header("Text")]
+        public TextMeshPro NameText;
+        public TextMeshPro DescriptionText;
 
         [HideInInspector] public Camera MainCamera;
         [HideInInspector] public PlayArea PlayArea;
@@ -40,7 +45,11 @@ namespace Assets.Scripts.CardEngine.Cards
             _state?.Enter(this);
         }
 
-        void OnMouseDown() => _state?.OnMouseDown(this);
+        void OnMouseDown()
+        {
+            CardPreviewController.Show(CardData);
+            _state?.OnMouseDown(this);
+        }
         void OnMouseDrag() => _state?.OnMouseDrag(this);
         void OnMouseUp()   => _state?.OnMouseUp(this);
 

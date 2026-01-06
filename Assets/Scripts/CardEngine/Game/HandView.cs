@@ -27,12 +27,13 @@ namespace Assets.Scripts.CardEngine.Game
 
         public void UpdateCardPositions()
         {
-            float spacing = 0.1f;
+            float spacing = 1f;
             float startX = -((_cardViews.Count - 1) * spacing) / 2f;
 
             for (int i = 0; i < _cardViews.Count; i++)
             {
                 _cardViews[i].transform.localPosition = new Vector3(startX + i * spacing, 0, 0);
+                _cardViews[i].transform.localRotation = Quaternion.identity;
             }
         }
 

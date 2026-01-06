@@ -30,7 +30,11 @@ namespace Assets.Scripts.CardEngine.Board
 
         public bool CanEnter(Card card)
         {
-            return !IsOccupied;
+			// Rules: only board-playable card types can enter a play area zone.
+			if (card?.Behavior != null && !card.Behavior.RequiresPlayZone)
+				return false;
+
+			return !IsOccupied;
         }
 
         public bool EnterCard(Card card)

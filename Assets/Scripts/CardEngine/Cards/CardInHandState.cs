@@ -57,10 +57,32 @@ namespace Assets.Scripts.CardEngine.Cards
         public void OnMouseUp(CardView view)
         {
             isDragging = false;
+            if (view?.CardData?.Behavior != null && !view.CardData.Behavior.RequiresPlayZone)
+            {
+                // Spells/other non-board cards: they must be released over the PlayArea
+                // (zones are fine; we just don't want "click to play" from hand).
+                if (view.CardData.GameState == null || view.CardData.Owner?.Hand == null || view.CardData.Owner?.Cemetery == null)
+                {
+                    OwnerHandView.ReturnCard(view);
+                    return;
+                }
+
+                if (!IsOverPlayArea(view))
+                {
+                    OwnerHandView.ReturnCard(view);
+                    return;
+                }
+
+                // Do not move zones here; let the behavior decide what happens after play.
+                view.CardData.Play(view.CardData.Owner.Hand);
+                return;
+            }
+
             bool placedInZone = TryGetZone(view, out PlayAreaZone zone, out PlayAreaZoneView zoneView);
             if (
                 placedInZone && 
                 view.CardData.GameState != null &&
+                view.CardData.Owner?.Hand != null &&
                 view.CardData.GameState.TryMoveToZone(view.CardData, view.CardData.Owner.Hand, zone))
             {
                 zoneView.AcceptCard(view);
@@ -71,6 +93,19 @@ namespace Assets.Scripts.CardEngine.Cards
                 return;
             }
             OwnerHandView.ReturnCard(view);
+        }
+
+        private static bool IsOverPlayArea(CardView view)
+        {
+            if (view == null)
+                return false;
+
+            Ray ray = new Ray(view.transform.position, Vector3.down);
+            if (!Physics.Raycast(ray, out RaycastHit hit, view.zoneRaycastDistance))
+                return false;
+
+            // Accept if the hit object is part of the play area (including zones).
+            return hit.collider.GetComponentInParent<PlayArea>() != null;
         }
 
         private static bool TryGetZone(

@@ -4,8 +4,7 @@ namespace Assets.Scripts.CardEngine.Game
     {
         Draw,
         Ritual,
-        Main,
-        Combat,
+        Play,
         End
     }
 }

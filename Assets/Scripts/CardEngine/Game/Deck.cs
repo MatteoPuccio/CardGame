@@ -20,8 +20,8 @@ namespace Assets.Scripts.CardEngine.Game
 
         public Deck(Player owner, GameState gameState, List<Card> cards = null)
         {
-            _owner = owner;
-            _gameState = gameState;
+            _owner = owner ?? throw new ArgumentNullException(nameof(owner));
+            _gameState = gameState ?? throw new ArgumentNullException(nameof(gameState));
             _cards = cards != null ? new CardCollection(cards) : new CardCollection();
         }
 
@@ -65,14 +65,14 @@ namespace Assets.Scripts.CardEngine.Game
         public Card DrawTop()
         {
             Card topCard = _cards.FirstCard();
-            if (topCard != null)
-            {
-                _cards.TakeCard(topCard);
-                CardRemoved?.Invoke(topCard);
-                _owner.Hand.AddCard(topCard);
-                return topCard;
-            }
-            return null;
+            if (topCard == null)
+                return null;
+
+            if (_owner.Hand == null)
+                throw new InvalidOperationException("Deck.DrawTop: owner.Hand is not initialized.");
+
+            bool moved = _gameState.MoveToZone(topCard, this, _owner.Hand);
+            return moved ? topCard : null;
         }
 
         public void Shuffle()

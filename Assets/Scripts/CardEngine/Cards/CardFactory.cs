@@ -20,7 +20,15 @@ namespace Assets.Scripts.CardEngine.Cards
 
         [SerializeField] private GameObject _cardPrefab;
         [SerializeField] private CardCategoryPrefab[] _prefabsByCategory;
+
+        [Header("Deploy Cost Stars")]
+        [Tooltip("Material used for filled stars on the 3D card prefab. Stars are expected to be child objects named OneStar, TwoStar, ThreeStar.")]
+        [SerializeField] private Material _filledStarMaterial;
+        [SerializeField] private Material _baseStarMaterial;
         private Transform _spawnParent;
+
+        public Material FilledStarMaterial => _filledStarMaterial;
+        public Material StarBaseMaterial => _baseStarMaterial;
 
         public void SetSpawnParent(Transform spawnParent)
         {
@@ -54,6 +62,15 @@ namespace Assets.Scripts.CardEngine.Cards
                 cardView.CardData = card;
                 cardView.NameText.text = card.Name;
                 cardView.DescriptionText.text = card.EffectText;
+
+                int deployCost = 0;
+                if (card.Behavior is TroopBehavior troop) {
+                    deployCost = troop.DeployCost;
+                    cardView.ApplyDeployCostStars(deployCost, _baseStarMaterial, _filledStarMaterial);
+                    cardView.UpdateTroopStats(troop);
+                    troop.OnStatsChanged += cardView.UpdateTroopStats;
+                }
+                
                 registry?.Register(card, cardView);
             }
             return cardView;

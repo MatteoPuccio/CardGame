@@ -62,18 +62,6 @@ namespace Assets.Scripts.CardEngine.Game
             if (_state.ActivePlayer == null)
                 return;
 
-            // Two-step behavior:
-            // - If you're not in End yet, AdvanceTurn moves you to End (but does not switch players).
-            // - If you're already in End, AdvanceTurn actually starts the next turn (switch player -> Draw).
-            if (_state.Phase != TurnPhase.End)
-            {
-                TurnPhase fromPhase = _state.Phase;
-                _state.SetPhase(TurnPhase.End);
-                PublishPhaseChanged(fromPhase, TurnPhase.End, startedNewTurn: false);
-                EnterPhase(TurnPhase.End);
-                return;
-            }
-
             Player nextPlayer = _state.GetOpponent(_state.ActivePlayer);
             if (nextPlayer == null)
             {
@@ -120,27 +108,33 @@ namespace Assets.Scripts.CardEngine.Game
                 case TurnPhase.Draw:
                     ExecuteDrawPhase();
                     break;
+
+                case TurnPhase.Ritual:
+                    ExecuteRitualPhase();
+                    break;
+
+                case TurnPhase.Play:
+                case TurnPhase.End:
+                default:
+                    break;
             }
         }
 
         private void ExecuteDrawPhase()
         {
-            var player = _state.ActivePlayer;
-            if (player == null)
-            {
-                Debug.LogError("TurnFlow: ActivePlayer is null; cannot execute draw phase.");
-                return;
-            }
+            Player player = _state.ActivePlayer;
 
-            var deck = player.Deck;
+            player.DeployPoints = player.DeployPointsPerTurn;
 
-            if (deck == null)
-            {
-                Debug.LogWarning("TurnFlow: Active player has no deck; skipping draw.");
-                return;
-            }
+            Deck deck = player.Deck;
 
             deck.DrawTop();
+        }
+
+        private void ExecuteRitualPhase()
+        {
+            // Rituals no longer auto-advance on Ritual phase entry.
+            // Advancement is player-triggered and limited to once per turn per ritual.
         }
     }
 }

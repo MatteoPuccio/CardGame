@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Assets.Scripts.CardEngine.Cards;
@@ -20,7 +21,7 @@ namespace Assets.Scripts.CardEngine.Game
         public void Initialize(Hand hand)
         {
             if (hand == null)
-                throw new System.ArgumentNullException(nameof(hand));
+                throw new ArgumentNullException(nameof(hand));
 
             _hand = hand;
 
@@ -28,14 +29,14 @@ namespace Assets.Scripts.CardEngine.Game
                 _handView = GetComponentInChildren<HandView>(includeInactive: true);
 
             if (_handView == null)
-                throw new System.InvalidOperationException("HandController: HandView reference is null.");
+                throw new InvalidOperationException("HandController: HandView reference is null.");
 
             if (GameController == null)
-                throw new System.InvalidOperationException("HandController: GameController is not set before Initialize().");
+                throw new InvalidOperationException("HandController: GameController is not set before Initialize().");
 
             _cardFactory = GameController.CardFactory;
             if (_cardFactory == null)
-                throw new System.InvalidOperationException("HandController: GameController.CardFactory is null.");
+                throw new InvalidOperationException("HandController: GameController.CardFactory is null.");
 
             _hand.CardAdded += OnCardAdded;
             _hand.CardRemoved += OnCardRemoved;

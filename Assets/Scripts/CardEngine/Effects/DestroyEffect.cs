@@ -1,24 +1,28 @@
 using Assets.Scripts.CardEngine.Cards;
+using Assets.Scripts.CardEngine.Effects;
 using Assets.Scripts.CardEngine.Game;
+using System;
 
 namespace Assets.Scripts.CardEngine.Effects
 {
-    public class DestroyEffect : IEffect
+    public class DestroyEffect : Effect
     {
-        public void Resolve(EffectContext effectContext)
+        protected override void ResolveCore(EffectContext effectContext)
         {
             foreach (var target in effectContext.Targets)
             {
                 if (target is Card card)
                 {
-                    ICardZone playAreaZone = card.Owner.PlayZones.Find(zone => zone.OccupyingCard == card);
-                    card.GameState.TryMoveToZone(
-                        card,
-                        playAreaZone,
-                        card.Owner.Cemetery
-                    );
+					effectContext.GameState?.DestroyCard(card, effectContext.Source);
                 }
             }
         }
     }
+
+    [Serializable]
+    public sealed class DestroyEffectDefinition : EffectDefinition
+    {
+        public override Effect CreateRuntimeEffect() => new DestroyEffect();
+    }
 }
+

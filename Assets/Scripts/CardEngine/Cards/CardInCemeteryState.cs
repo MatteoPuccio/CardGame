@@ -12,7 +12,7 @@ namespace Assets.Scripts.CardEngine.Cards
 			OwnerCemeteryView = ownerCemeteryView;
 		}
 
-		public string GetName => "CardInCemeteryState";
+		public string Name => "CardInCemeteryState";
 
 		public void Enter(CardView view)
 		{
@@ -25,6 +25,9 @@ namespace Assets.Scripts.CardEngine.Cards
 		{
 			if (view?.CardData?.GameState == null)
 				return;
+
+			if (view.CardData.GameState.ActivePlayer != null && view.CardData.Owner != null && view.CardData.GameState.ActivePlayer != view.CardData.Owner)
+				return;
 			if (view.CardData.Owner?.Cemetery == null)
 				return;
 
@@ -33,13 +36,13 @@ namespace Assets.Scripts.CardEngine.Cards
 			{
 				if (view.CardData.Owner.Deck == null)
 					return;
-				view.CardData.GameState.TryMoveToZone(view.CardData, view.CardData.Owner.Cemetery, view.CardData.Owner.Deck, this);
+				view.CardData.GameState.MoveToZone(view.CardData, view.CardData.Owner.Cemetery, view.CardData.Owner.Deck, this);
 				return;
 			}
 
 			if (view.CardData.Owner.Hand == null)
 				return;
-			view.CardData.GameState.TryMoveToZone(view.CardData, view.CardData.Owner.Cemetery, view.CardData.Owner.Hand);
+			view.CardData.GameState.MoveToZone(view.CardData, view.CardData.Owner.Cemetery, view.CardData.Owner.Hand, this);
 		}
 
 		public void OnMouseDrag(CardView view) { }

@@ -24,10 +24,12 @@ namespace Assets.Scripts.CardEngine.Board
     public class PlayerBoard
     {
         private readonly GameObject _boardInstance;
-        private readonly HandController _handController;
-        private readonly DeckController _deckController;
-        private readonly CemeteryController _cemeteryController;
-        private readonly PlayAreaController _playAreaController;
+        private HandController _handController;
+        private DeckController _deckController;
+        private CemeteryController _cemeteryController;
+        private RitualZoneController _ritualZoneController;
+        private PlayAreaController _playAreaController;
+        private DeployPointsView _deployPointsView;
         private readonly Player _player;
         private readonly GameController _gameController;
         public string PlayerAreaTag => _player.IsLocalPlayer
@@ -37,6 +39,7 @@ namespace Assets.Scripts.CardEngine.Board
         public DeckController DeckController => _deckController;
         public HandController HandController => _handController;
         public CemeteryController CemeteryController => _cemeteryController;
+        public RitualZoneController RitualZoneController => _ritualZoneController;
         public PlayAreaController PlayAreaController => _playAreaController;
         public GameObject BoardInstance => _boardInstance;
 
@@ -63,13 +66,11 @@ namespace Assets.Scripts.CardEngine.Board
             float z = 0f;
             if (isLocalPlayer)
             {
-                // Center on positive third (front third) of the main board
-                z = mainBoardCenterZ + mainBoardExtentZ / 3f;
+                z = mainBoardCenterZ - mainBoardExtentZ / 3f;
             }
             else
             {
-                // Center on negative third (back third) of the main board
-                z = mainBoardCenterZ - mainBoardExtentZ / 3f;
+                z = mainBoardCenterZ + mainBoardExtentZ / 3f;
             }
             return new Vector3(0, y, z);
         }
@@ -87,36 +88,41 @@ namespace Assets.Scripts.CardEngine.Board
                 throw new InvalidOperationException("PlayerBoard: GameController.GameplayRoot is not assigned.");
 
             Vector3 boardPosition = GetPlayerBoardPosition(gameController.Board, gameController.PlayerBoardPrefab, player.IsLocalPlayer);
-
-            if (player.IsLocalPlayer)
-            {
-                _boardInstance = GameObject.Instantiate(
+            _boardInstance = GameObject.Instantiate(
                     original: gameController.PlayerBoardPrefab,
                     position: boardPosition,
                     rotation: UnityEngine.Quaternion.identity,
                     parent: gameController.GameplayRoot
                 );
-            }
-            else
-            {
-                _boardInstance = GameObject.Instantiate(
-                    original: gameController.PlayerBoardPrefab,
-                    position: boardPosition,
-                    rotation: UnityEngine.Quaternion.Euler(0, 180, 0),
-                    parent: gameController.GameplayRoot
-                );
-            }
+
 
             var playAreaTransform = _boardInstance.transform.Find("PlayArea");
             if (playAreaTransform != null)
                 playAreaTransform.gameObject.tag = PlayerAreaTag;
             else
                 Debug.LogWarning("PlayerBoard: Could not find child named 'PlayArea' to tag.");
+            AssignControllers();
 
+            CreateHand();
+            CreateDeck();
+            CreateCemetery();
+            CreateRitualZone();
+
+            if (_playAreaController.PlayArea == null)
+                throw new InvalidOperationException("PlayerBoard: PlayAreaController.PlayArea is null after initialization.");
+
+            player.PlayZones = _playAreaController.PlayArea.Zones;
+            RotateOpponentBoard();
+        }
+
+        private void AssignControllers()
+        {
             _handController = _boardInstance.GetComponentInChildren<HandController>();
             _deckController = _boardInstance.GetComponentInChildren<DeckController>();
             _cemeteryController = _boardInstance.GetComponentInChildren<CemeteryController>();
+            _ritualZoneController = _boardInstance.GetComponentInChildren<RitualZoneController>();
             _playAreaController = _boardInstance.GetComponentInChildren<PlayAreaController>();
+            _deployPointsView = _boardInstance.GetComponentInChildren<DeployPointsView>();
 
             if (_handController == null)
                 throw new InvalidOperationException("PlayerBoard: HandController component not found in PlayerBoard prefab.");
@@ -127,20 +133,20 @@ namespace Assets.Scripts.CardEngine.Board
             if (_playAreaController == null)
                 throw new InvalidOperationException("PlayerBoard: PlayAreaController component not found in PlayerBoard prefab.");
 
-            // Dependency wiring first (avoid controllers running before they have references).
-            _handController.GameController = gameController;
-            _deckController.GameController = gameController;
-            _cemeteryController.GameController = gameController;
-            _playAreaController.Initialize(gameController);
+            _handController.GameController = _gameController;
+            _deckController.GameController = _gameController;
+            _cemeteryController.GameController = _gameController;
+            _playAreaController.Initialize(_gameController);        
 
-            CreateHand();
-            CreateDeck();
-            CreateCemetery();
+            if (_deployPointsView != null)
+                _deployPointsView.Bind(_player);
+        }
 
-            if (_playAreaController.PlayArea == null)
-                throw new InvalidOperationException("PlayerBoard: PlayAreaController.PlayArea is null after initialization.");
-
-            player.PlayZones = _playAreaController.PlayArea.Zones;
+        private void RotateOpponentBoard()
+        {
+            if (!_player.IsLocalPlayer) {
+                _boardInstance.transform.Rotate(0f, 180f, 0f);
+            }
         }
 
         private void CreateHand()
@@ -169,6 +175,30 @@ namespace Assets.Scripts.CardEngine.Board
 
             _cemeteryController.BindScrollRects(owned, startDisabled: true);
 
+        }
+
+        private void CreateRitualZone()
+        {
+            _player.Rituals = new RitualZone(owner: _player, gameState: _gameController.GameState);
+
+            if (_ritualZoneController == null)
+            {
+                var playAreaTransform = _boardInstance.transform.Find("PlayArea");
+                var parent = playAreaTransform != null ? playAreaTransform : _boardInstance.transform;
+
+                var ritualRoot = new GameObject("RitualZone");
+                ritualRoot.transform.SetParent(parent, worldPositionStays: false);
+                ritualRoot.transform.localPosition = new Vector3(0f, 0.01f, -0.35f);
+                ritualRoot.transform.localRotation = Quaternion.identity;
+                ritualRoot.transform.localScale = Vector3.one;
+
+                ritualRoot.AddComponent<RitualZoneView>();
+
+                _ritualZoneController = ritualRoot.AddComponent<RitualZoneController>();
+            }
+
+            _ritualZoneController.GameController = _gameController;
+            _ritualZoneController.Initialize(_player.Rituals);
         }
 
     }

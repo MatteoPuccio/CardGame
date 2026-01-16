@@ -11,7 +11,7 @@ namespace Assets.Scripts.CardEngine.Cards
         {
             OccupiedZoneView = occupiedZoneView;
         }
-        public string GetName => "CardInPlayState";
+        public string Name => "CardInPlayState";
 
         public void Enter(CardView view)
         {
@@ -24,12 +24,15 @@ namespace Assets.Scripts.CardEngine.Cards
             if (view.CardData?.GameState == null)
                 return;
 
+            if (view.CardData.GameState.ActivePlayer != null && view.CardData.Owner != null && view.CardData.GameState.ActivePlayer != view.CardData.Owner)
+                return;
+
             // Default: click returns card to hand.
             // Minimal extra: Shift+click sends card to deck (top).
             bool toDeck = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
             bool moved = toDeck
-                ? view.CardData.GameState.TryMoveToZone(view.CardData, view.OccupiedZone, view.CardData.Owner.Deck)
-                : view.CardData.GameState.TryMoveToZone(view.CardData, view.OccupiedZone, view.CardData.Owner.Hand);
+                ? view.CardData.GameState.MoveToZone(view.CardData, view.OccupiedZone, view.CardData.Owner.Deck, this)
+                : view.CardData.GameState.MoveToZone(view.CardData, view.OccupiedZone, view.CardData.Owner.Hand, this);
             
             if (!moved)
                 return;

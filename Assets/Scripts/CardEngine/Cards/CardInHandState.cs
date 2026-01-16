@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Assets.Scripts.CardEngine.Board;
 using Assets.Scripts.CardEngine.Game;
@@ -9,7 +10,7 @@ namespace Assets.Scripts.CardEngine.Cards
         private bool isDragging;
         private Vector3 dragPlaneOrigin;
         public HandView OwnerHandView { get; private set;}
-        public string GetName => "CardInHandState";
+        public string Name => "CardInHandState";
 
         public CardInHandState(HandView ownerHandView)
         {
@@ -33,6 +34,9 @@ namespace Assets.Scripts.CardEngine.Cards
 
         public void OnMouseDown(CardView view)
         {
+            if (view?.CardData?.GameState?.ActivePlayer != null && view.CardData.Owner != null && view.CardData.GameState.ActivePlayer != view.CardData.Owner)
+                return;
+
             isDragging = true;
             // Capture the current Y at drag start; the card may have been re-laid out after Enter().
             dragPlaneOrigin = new Vector3(0f, view.transform.position.y, 0f);
@@ -57,42 +61,127 @@ namespace Assets.Scripts.CardEngine.Cards
         public void OnMouseUp(CardView view)
         {
             isDragging = false;
-            if (view?.CardData?.Behavior != null && !view.CardData.Behavior.RequiresPlayZone)
+
+            if (!IsCurrentPlayerAllowedToPlay(view))
             {
-                // Spells/other non-board cards: they must be released over the PlayArea
-                // (zones are fine; we just don't want "click to play" from hand).
-                if (view.CardData.GameState == null || view.CardData.Owner?.Hand == null || view.CardData.Owner?.Cemetery == null)
-                {
-                    OwnerHandView.ReturnCard(view);
-                    return;
-                }
-
-                if (!IsOverPlayArea(view))
-                {
-                    OwnerHandView.ReturnCard(view);
-                    return;
-                }
-
-                // Do not move zones here; let the behavior decide what happens after play.
-                view.CardData.Play(view.CardData.Owner.Hand);
+                OwnerHandView.ReturnCard(view);
                 return;
             }
 
-            bool placedInZone = TryGetZone(view, out PlayAreaZone zone, out PlayAreaZoneView zoneView);
-            if (
-                placedInZone && 
-                view.CardData.GameState != null &&
-                view.CardData.Owner?.Hand != null &&
-                view.CardData.GameState.TryMoveToZone(view.CardData, view.CardData.Owner.Hand, zone))
+            if (IsNonBoardCard(view))
             {
-                zoneView.AcceptCard(view);
-
-                view.OccupiedZone = zone;
-                view.OccupiedZoneView = zoneView;
-                view.CardData.Play(view.CardData.Owner.Hand);
+                if (!HandleNonBoardCardRelease(view))
+                {
+                    OwnerHandView.ReturnCard(view);
+                }
                 return;
             }
+
+            if (TryPlaceCardInZone(view, out PlayAreaZone zone, out PlayAreaZoneView zoneView))
+            {
+                HandlePlacedInZone(view, zone, zoneView);
+                return;
+            }
+
             OwnerHandView.ReturnCard(view);
+        }
+
+        private static bool IsCurrentPlayerAllowedToPlay(CardView view)
+        {
+            return !(view?.CardData?.GameState?.ActivePlayer != null &&
+                     view.CardData.Owner != null &&
+                     view.CardData.GameState.ActivePlayer != view.CardData.Owner);
+        }
+
+        private static bool IsNonBoardCard(CardView view)
+        {
+            return view?.CardData?.Behavior != null && !view.CardData.Behavior.RequiresPlayZone;
+        }
+
+        private bool HandleNonBoardCardRelease(CardView view)
+        {
+            if (view.CardData.GameState == null || view.CardData.Owner?.Hand == null || view.CardData.Owner?.Cemetery == null)
+                return false;
+
+            if (view.CardData.Category == CardType.Ritual)
+            {
+                if (!IsOverRitualZone(view))
+                    return false;
+            }
+            else
+            {
+                if (!IsOverPlayArea(view))
+                    return false;
+            }
+
+            return TryBeginTargetingOrPlay(view, view.CardData.Owner.Hand, onCancelled: () => OwnerHandView.ReturnCard(view));
+        }
+
+        private bool TryPlaceCardInZone(CardView view, out PlayAreaZone zone, out PlayAreaZoneView zoneView)
+        {
+            zone = null;
+            zoneView = null;
+            bool placedInZone = TryGetZone(view, out zone, out zoneView);
+            return placedInZone &&
+                   view.CardData.GameState != null &&
+                   view.CardData.Owner?.Hand != null &&
+                     view.CardData.GameState.MoveToZone(view.CardData, view.CardData.Owner.Hand, zone, this);
+        }
+
+        private void HandlePlacedInZone(CardView view, PlayAreaZone zone, PlayAreaZoneView zoneView)
+        {
+            if (view == null || zone == null || zoneView == null)
+                return;
+
+            zoneView.AcceptCard(view);
+
+            view.OccupiedZone = zone;
+            view.OccupiedZoneView = zoneView;
+
+            if (TryBeginTargetingOrPlay(view, view.CardData.Owner.Hand, onCancelled: () => RollbackPlacedCardToHand(view, zone)))
+                return;
+
+            RollbackPlacedCardToHand(view, zone);
+        }
+
+        private void RollbackPlacedCardToHand(CardView view, PlayAreaZone zone)
+        {
+            // Play was cancelled (e.g., requires a target but none exist). Roll back.
+            var gs = view != null ? view.CardData?.GameState : null;
+            var hand = view != null ? view.CardData?.Owner?.Hand : null;
+
+            if (gs != null && hand != null && zone != null)
+                gs.MoveToZone(view.CardData, zone, hand, this);
+
+            if (view != null)
+            {
+                view.OccupiedZone = null;
+                view.OccupiedZoneView = null;
+            }
+
+            OwnerHandView.ReturnCard(view);
+        }
+
+        private static bool TryBeginTargetingOrPlay(CardView view, ICardZone sourceZone, Action onCancelled = null)
+        {
+            if (view?.CardData == null)
+                return false;
+
+            var card = view.CardData;
+            var gameState = card.GameState;
+
+            if (gameState == null)
+                return false;
+
+            if (!card.TryBeginPlay(sourceZone, out var session, out var candidates))
+                return false;
+
+            if (candidates != null && candidates.Count > 0)
+            {
+                gameState.Targeting.Begin(session, candidates, onCancelled);
+            }
+
+            return true;
         }
 
         private static bool IsOverPlayArea(CardView view)
@@ -106,6 +195,18 @@ namespace Assets.Scripts.CardEngine.Cards
 
             // Accept if the hit object is part of the play area (including zones).
             return hit.collider.GetComponentInParent<PlayArea>() != null;
+        }
+
+        private static bool IsOverRitualZone(CardView view)
+        {
+            if (view == null)
+                return false;
+
+            Ray ray = new Ray(view.transform.position, Vector3.down);
+            if (!Physics.Raycast(ray, out RaycastHit hit, view.zoneRaycastDistance))
+                return false;
+
+            return hit.collider.GetComponentInParent<Game.RitualZoneView>() != null;
         }
 
         private static bool TryGetZone(

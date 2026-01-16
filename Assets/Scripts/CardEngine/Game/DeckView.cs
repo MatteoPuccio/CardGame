@@ -32,6 +32,7 @@ namespace Assets.Scripts.CardEngine.Game
             for (int i = 0; i < _cardViews.Count; i++)
             {
                 _cardViews[i].transform.localPosition = new Vector3(0, i * spacing, 0);
+                _cardViews[i].transform.localRotation = Quaternion.identity;
             }
         }
     }

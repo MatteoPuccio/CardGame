@@ -1,12 +1,15 @@
 using System.Collections.Generic;
 using Assets.Scripts.CardEngine.Game;
 using Assets.Scripts.CardEngine.Effects;
+using Assets.Scripts.CardEngine.Events;
 
 
 namespace Assets.Scripts.CardEngine.Cards
 {
     public class Card: ITargetable
     {
+        public TargetableKind Kind => TargetableKind.Card;
+
         public string Id { get; set; }
         public string Name { get; set; }
         public string EffectText { get; set; }
@@ -15,7 +18,8 @@ namespace Assets.Scripts.CardEngine.Cards
 
         public Player Owner { get; }
         public GameState GameState { get; set; }
-        public IEffect OnPlayEffect { get; set; }
+        public Effect OnPlayEffect { get; set; }
+        public List<RapidEffect> RapidEffects { get; } = new();
 
         public Card(
             string id, 
@@ -23,7 +27,7 @@ namespace Assets.Scripts.CardEngine.Cards
             Player owner,
             string name = "",
             string effectText = "",
-            IEffect effect = null,
+            Effect effect = null,
             GameState gameState = null
         )
         {
@@ -37,15 +41,41 @@ namespace Assets.Scripts.CardEngine.Cards
 			Behavior = CardBehavior.Create(this, cardCategory);
         }
 
-        public void Play(ICardZone sourceZone)
+        public bool TryBeginPlay(ICardZone sourceZone, out CardPlaySession session, out List<ITargetable> candidates)
         {
-            EffectContext context = new EffectContext
+            session = null;
+            candidates = null;
+
+            if (GameState?.ActivePlayer != null && Owner != null && GameState.ActivePlayer != Owner)
+                return false;
+
+            if (Category == CardType.Ritual && GameState != null && GameState.Phase != Game.TurnPhase.Ritual)
+                return false;
+
+            var context = new EffectContext
             {
                 Source = this,
                 GameState = GameState,
+                Targets = null,
             };
-            OnPlayEffect?.Resolve(context);
-			Behavior?.AfterPlayed(context, sourceZone);
+
+            session = new CardPlaySession(this, sourceZone, context);
+            session.TryAdvance(out candidates);
+
+            if (session.WasCancelled)
+            {
+                session = null;
+                candidates = null;
+                return false;
+            }
+
+            return true;
+        }
+
+
+        internal void FinishPlay(EffectContext context, ICardZone sourceZone)
+        {
+            Behavior?.AfterPlayed(context, sourceZone);
         }
     }
 }

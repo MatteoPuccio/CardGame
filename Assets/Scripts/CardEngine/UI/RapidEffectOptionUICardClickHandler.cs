@@ -1,0 +1,31 @@
+using Assets.Scripts.CardEngine.Game;
+using UnityEngine;
+using UnityEngine.EventSystems;
+
+namespace Assets.Scripts.CardEngine.UI
+{
+    public sealed class RapidEffectOptionUICardClickHandler : MonoBehaviour, IUICardClickHandler
+    {
+        private RapidEffectPromptUI _ui;
+        private RapidEffectOption _option;
+
+        public void Bind(RapidEffectPromptUI ui, RapidEffectOption option)
+        {
+            _ui = ui;
+            _option = option;
+        }
+
+        public bool HandleClick(Assets.Scripts.UICardView view, PointerEventData eventData)
+        {
+            if (eventData == null || eventData.button != PointerEventData.InputButton.Left)
+                return false;
+
+            // Keep the preview behavior (optional), then select.
+            if (view != null && view.CardData != null)
+                CardPreviewController.Show(view.CardData);
+
+            _ui?.SelectOption(_option);
+            return true;
+        }
+    }
+}

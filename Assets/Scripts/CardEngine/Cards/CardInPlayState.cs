@@ -21,23 +21,8 @@ namespace Assets.Scripts.CardEngine.Cards
 
         public void OnMouseDown(CardView view)
         {
-            if (view.CardData?.GameState == null)
-                return;
-
-            if (view.CardData.GameState.ActivePlayer != null && view.CardData.Owner != null && view.CardData.GameState.ActivePlayer != view.CardData.Owner)
-                return;
-
-            // Default: click returns card to hand.
-            // Minimal extra: Shift+click sends card to deck (top).
-            bool toDeck = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
-            bool moved = toDeck
-                ? view.CardData.GameState.MoveToZone(view.CardData, view.OccupiedZone, view.CardData.Owner.Deck, this)
-                : view.CardData.GameState.MoveToZone(view.CardData, view.OccupiedZone, view.CardData.Owner.Hand, this);
-            
-            if (!moved)
-                return;
-            view.OccupiedZone = null;
-            view.OccupiedZoneView = null;
+            // Intentionally empty: cards in play are no longer moved back to hand on click.
+            // CardView.HandleClick() still shows the preview and handles targeting clicks.
         }
 
         public void OnMouseDrag(CardView view) { }

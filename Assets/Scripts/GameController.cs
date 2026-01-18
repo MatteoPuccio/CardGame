@@ -1,5 +1,6 @@
 
 using System;
+using System.IO;
 using Assets.Scripts.CardEngine.Game;
 using Assets.Scripts.CardEngine.Cards;
 using Assets.Scripts.CardEngine.Events;
@@ -7,6 +8,14 @@ using Assets.Scripts.CardEngine.Board;
 using Assets.Scripts.CardEngine.UI;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.SceneManagement;
+using Microsoft.VisualBasic;
+using Assets.Scripts.CardEngine.Utils;
+
+
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 
 namespace Assets.Scripts
@@ -29,6 +38,19 @@ namespace Assets.Scripts
 
         [Header("Debug")]
         [SerializeField] private bool _autoActivateFirstRapidEffect;
+
+        [Header("Scene Flow")]
+        [Tooltip("If set, this scene will be loaded when a player is defeated. If empty, the current scene is reloaded.")]
+    #if UNITY_EDITOR
+        [SerializeField] private SceneAsset _onDefeatLoadSceneAsset;
+    #endif
+        [SerializeField, HideInInspector] private string _onDefeatLoadScene;
+
+        // Legacy fields kept for Inspector migration/back-compat.
+        [SerializeField, HideInInspector] private string _onLocalDefeatLoadScene;
+        [SerializeField, HideInInspector] private string _onOpponentDefeatLoadScene;
+
+        private bool _isEndingMatch;
         private GameState _gameState;
 
         public CardFactory CardFactory => _cardFactory;
@@ -94,6 +116,70 @@ namespace Assets.Scripts
             EventBus.Subscribe<PhaseChangedEvent>(OnPhaseChanged);
 			EventBus.Subscribe<TroopDamagedEvent>(OnTroopDamaged);
 			EventBus.Subscribe<TroopDiedEvent>(OnTroopDied);
+			EventBus.Subscribe<PlayerDefeatedEvent>(OnPlayerDefeated);
+        }
+
+        private void OnPlayerDefeated(PlayerDefeatedEvent e)
+        {
+            if (_isEndingMatch)
+                return;
+
+            var defeated = e?.DefeatedPlayer;
+            if (defeated == null)
+                return;
+
+            _isEndingMatch = true;
+
+            // Best-effort cleanup to avoid UI continuing to act during transition.
+            _gameState?.Targeting?.Cancel("Match ended.");
+            _gameState?.Attack?.EndAttackPhase("Match ended.");
+
+            string next = _onDefeatLoadScene;
+            if (string.IsNullOrWhiteSpace(next))
+            {
+                RestartMatch();
+                return;
+            }
+
+            SceneManager.LoadScene(next, LoadSceneMode.Single);
+        }
+
+        private void OnValidate()
+        {
+#if UNITY_EDITOR
+            // Prefer the SceneAsset if assigned (supports drag & drop in Inspector).
+            if (_onDefeatLoadSceneAsset != null)
+                _onDefeatLoadScene = _onDefeatLoadSceneAsset.name;
+#endif
+
+            // If you had values set before the refactor, keep them working.
+            if (string.IsNullOrWhiteSpace(_onDefeatLoadScene))
+            {
+                if (!string.IsNullOrWhiteSpace(_onLocalDefeatLoadScene))
+                    _onDefeatLoadScene = _onLocalDefeatLoadScene;
+                else if (!string.IsNullOrWhiteSpace(_onOpponentDefeatLoadScene))
+                    _onDefeatLoadScene = _onOpponentDefeatLoadScene;
+            }
+        }
+
+        public void RestartMatch()
+        {
+            if (!isActiveAndEnabled)
+                return;
+
+            var scene = SceneManager.GetActiveScene();
+            SceneManager.LoadScene(scene.name, LoadSceneMode.Single);
+        }
+
+        public void LoadScene(string sceneName)
+        {
+            if (!isActiveAndEnabled)
+                return;
+
+            if (string.IsNullOrWhiteSpace(sceneName))
+                return;
+
+            SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
         }
 
         private static void OnCardPlayed(CardPlayedEvent e)
@@ -161,6 +247,11 @@ namespace Assets.Scripts
 
             LoadDeckFromScriptable(player1, _player1Deck, _gameState);
             LoadDeckFromScriptable(player2, _player2Deck, _gameState);
+            for(int i = 0; i < Constants.STARTING_HAND_SIZE; i++)
+            {
+                player1.Deck.DrawTop();
+                player2.Deck.DrawTop();
+            }
 
             _rapidEffectChain = new RapidEffectChainSystem(_gameState)
             {
@@ -211,6 +302,7 @@ namespace Assets.Scripts
                 int count = entry.Count <= 0 ? 1 : entry.Count;
                 AddCopiesToDeck(owner, cardAsset, count, gameState);
             }
+            owner.Deck.Shuffle();
         }
 
         private static void AddCopiesToDeck(Player owner, ScriptableCard cardAsset, int count, GameState gameState)

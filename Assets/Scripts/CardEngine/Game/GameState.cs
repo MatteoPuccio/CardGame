@@ -13,6 +13,8 @@ namespace Assets.Scripts.CardEngine.Game
 
         public RapidEffectChainSystem RapidEffectChain { get; set; }
 
+        public AttackPhaseController Attack { get; }
+
         public Player Player1 { get; private set; }
         public Player Player2 { get; private set; }
 
@@ -27,6 +29,7 @@ namespace Assets.Scripts.CardEngine.Game
         public GameState(EventBus bus)
         {
             _eventBus = bus;
+			Attack = new AttackPhaseController(this);
         }
 
         public void AddPlayers(Player p1, Player p2)

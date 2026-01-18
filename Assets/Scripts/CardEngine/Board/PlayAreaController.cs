@@ -10,7 +10,7 @@ namespace Assets.Scripts.CardEngine.Board
     public class PlayAreaController : MonoBehaviour
     {
         [SerializeField] private PlayArea _playArea;
-        [SerializeField] private CardFactory _cardFactory;
+        private CardFactory _cardFactory;
 
         private bool _initialized;
     

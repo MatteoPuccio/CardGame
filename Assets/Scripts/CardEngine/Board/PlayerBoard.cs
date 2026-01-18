@@ -30,6 +30,7 @@ namespace Assets.Scripts.CardEngine.Board
         private RitualZoneController _ritualZoneController;
         private PlayAreaController _playAreaController;
         private DeployPointsView _deployPointsView;
+        private LifePointsView _lifePointsView;
         private readonly Player _player;
         private readonly GameController _gameController;
         public string PlayerAreaTag => _player.IsLocalPlayer
@@ -98,7 +99,13 @@ namespace Assets.Scripts.CardEngine.Board
 
             var playAreaTransform = _boardInstance.transform.Find("PlayArea");
             if (playAreaTransform != null)
+            {
                 playAreaTransform.gameObject.tag = PlayerAreaTag;
+                var clickView = playAreaTransform.gameObject.GetComponent<PlayerTargetClickView>();
+                if (clickView == null)
+                    clickView = playAreaTransform.gameObject.AddComponent<PlayerTargetClickView>();
+                clickView.Bind(_gameController, _player);
+            }
             else
                 Debug.LogWarning("PlayerBoard: Could not find child named 'PlayArea' to tag.");
             AssignControllers();
@@ -123,6 +130,7 @@ namespace Assets.Scripts.CardEngine.Board
             _ritualZoneController = _boardInstance.GetComponentInChildren<RitualZoneController>();
             _playAreaController = _boardInstance.GetComponentInChildren<PlayAreaController>();
             _deployPointsView = _boardInstance.GetComponentInChildren<DeployPointsView>();
+            _lifePointsView = _boardInstance.GetComponentInChildren<LifePointsView>();
 
             if (_handController == null)
                 throw new InvalidOperationException("PlayerBoard: HandController component not found in PlayerBoard prefab.");
@@ -140,6 +148,9 @@ namespace Assets.Scripts.CardEngine.Board
 
             if (_deployPointsView != null)
                 _deployPointsView.Bind(_player);
+
+            if (_lifePointsView != null)
+                _lifePointsView.Bind(_player);
         }
 
         private void RotateOpponentBoard()

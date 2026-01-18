@@ -11,6 +11,7 @@ namespace Assets.Scripts.CardEngine.Game
             TurnPhase.Draw,
             TurnPhase.Ritual,
             TurnPhase.Play,
+            TurnPhase.Attack,
             TurnPhase.End
         };
 
@@ -61,6 +62,8 @@ namespace Assets.Scripts.CardEngine.Game
         {
             if (_state.ActivePlayer == null)
                 return;
+
+			_state.Attack?.EndAttackPhase("Turn ended.");
 
             Player nextPlayer = _state.GetOpponent(_state.ActivePlayer);
             if (nextPlayer == null)
@@ -113,11 +116,24 @@ namespace Assets.Scripts.CardEngine.Game
                     ExecuteRitualPhase();
                     break;
 
-                case TurnPhase.Play:
+                case TurnPhase.Attack:
+                    ExecuteAttackPhase();
+                    break;
+
                 case TurnPhase.End:
+                    // The player ends Attack phase by moving to End phase.
+                    _state.Attack?.EndAttackPhase();
+                    break;
+
+                case TurnPhase.Play:
                 default:
                     break;
             }
+        }
+
+        private void ExecuteAttackPhase()
+        {
+            _state.Attack?.BeginAttackPhase();
         }
 
         private void ExecuteDrawPhase()

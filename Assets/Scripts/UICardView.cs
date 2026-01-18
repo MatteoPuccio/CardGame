@@ -1,6 +1,7 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 using Assets.Scripts.CardEngine.Cards;
 using System.Linq;
 
@@ -18,13 +19,31 @@ namespace Assets.Scripts
 	{
 		[SerializeField] private TMP_Text _nameText;
 		[SerializeField] private TMP_Text _effectText;
+		[Header("Troop Properties")]
+		[SerializeField] private Image _oneStar;
+        [SerializeField] private Image _twoStar;
+        [SerializeField] private Image _threeStar;
+		[SerializeField] private TMP_Text _powerText;
+		[SerializeField] private TMP_Text _healthText;
+
+		[Header("Troop UI Colors")]
+		[SerializeField] private Color _filledStarColor = Color.yellow;
+		[SerializeField] private Color _emptyStarColor = new Color(1f, 1f, 1f, 0.25f);
 
 		public Card CardData { get; private set; }
+		private TroopBehavior _boundTroop;
 
 		public void Bind(Card card)
 		{
+			UnbindTroopEvents();
 			CardData = card;
+			BindTroopEvents();
 			Refresh();
+		}
+
+		private void OnDestroy()
+		{
+			UnbindTroopEvents();
 		}
 
 		private void Refresh()
@@ -37,6 +56,73 @@ namespace Assets.Scripts
 				_effectText.text = CardData != null ? (CardData.EffectText ?? string.Empty) : string.Empty;
 			}
 
+			RefreshTroopUI();
+
+		}
+
+		private void BindTroopEvents()
+		{
+			if (CardData?.Behavior is TroopBehavior troop)
+			{
+				_boundTroop = troop;
+				troop.OnStatsChanged += HandleTroopStatsChanged;
+			}
+		}
+
+		private void UnbindTroopEvents()
+		{
+			if (_boundTroop != null)
+				_boundTroop.OnStatsChanged -= HandleTroopStatsChanged;
+			_boundTroop = null;
+		}
+
+		private void HandleTroopStatsChanged(TroopBehavior troop)
+		{
+			if (troop == null || CardData?.Behavior != troop)
+				return;
+			UpdateTroopStats(troop);
+		}
+
+		private void RefreshTroopUI()
+		{
+			if (CardData?.Behavior is TroopBehavior troop)
+			{
+				ApplyDeployCostStars(troop.DeployCost);
+				UpdateTroopStats(troop);
+			}
+			else
+			{
+				ApplyDeployCostStars(0);
+				if (_powerText != null) _powerText.text = string.Empty;
+				if (_healthText != null) _healthText.text = string.Empty;
+			}
+		}
+
+		public void ApplyDeployCostStars(int deployCost)
+		{
+			if (CardData != null && CardData.Category != CardType.Troop)
+				return;
+
+			ApplyStar(_oneStar, deployCost >= 1);
+			ApplyStar(_twoStar, deployCost >= 2);
+			ApplyStar(_threeStar, deployCost >= 3);
+		}
+
+		private void ApplyStar(Image image, bool filled)
+		{
+			if (image == null)
+				return;
+			image.color = filled ? _filledStarColor : _emptyStarColor;
+		}
+
+		public void UpdateTroopStats(TroopBehavior troop)
+		{
+			if (troop == null)
+				return;
+			if (_powerText != null)
+				_powerText.text = troop.Power.ToString();
+			if (_healthText != null)
+				_healthText.text = troop.Health.ToString();
 		}
 
 		public void OnPointerClick(PointerEventData eventData)

@@ -120,11 +120,7 @@ namespace Assets.Scripts.CardEngine.Game
 
 		private static void SetScrollRectEnabled(ScrollRect scrollRect, bool enabled)
 		{
-			if (scrollRect == null)
-				return;
-			Debug.Log($"CemeteryController: Set scroll enabled to {enabled}.");
-
-			scrollRect.gameObject.SetActive(enabled);
+			scrollRect?.gameObject.SetActive(enabled);
 		}
 
 		private void OnCardAdded(Card card)

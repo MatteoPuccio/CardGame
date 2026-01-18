@@ -11,7 +11,20 @@ namespace Assets.Scripts.CardEngine.Game
         public TargetableKind Kind => TargetableKind.Player;
 
         public string Name;
-        public uint Life;
+        public event Action<uint> LifeChanged;
+
+        private uint _life;
+        public uint Life
+        {
+            get => _life;
+            set
+            {
+                if (_life == value)
+                    return;
+                _life = value;
+                LifeChanged?.Invoke(_life);
+            }
+        }
         public Deck Deck;
         public Hand Hand;
         public Cemetery Cemetery;

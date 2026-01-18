@@ -69,6 +69,10 @@ namespace Assets.Scripts.CardEngine.Cards
                     cardView.ApplyDeployCostStars(deployCost, _baseStarMaterial, _filledStarMaterial);
                     cardView.UpdateTroopStats(troop);
                     troop.OnStatsChanged += cardView.UpdateTroopStats;
+
+					// Auto-wire attack UI (sword icon) for troops.
+					if (cardGO.GetComponent<AttackSwordPresenter>() == null)
+						cardGO.AddComponent<AttackSwordPresenter>();
                 }
                 
                 registry?.Register(card, cardView);

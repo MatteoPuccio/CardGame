@@ -5,6 +5,7 @@ namespace Assets.Scripts.CardEngine.Game
         Draw,
         Ritual,
         Play,
+        Attack,
         End
     }
 }

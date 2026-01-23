@@ -1,12 +1,13 @@
 using Assets.Scripts.CardEngine.Cards;
 using Assets.Scripts.CardEngine.Effects;
+using Assets.Scripts.CardEngine.Rules;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Assets.Scripts.CardEngine.Effects
 {
-    public class TargetedEffect : Effect, ITargetingEffect, IResettableEffect
+    public class TargetedEffect : Effect, ITargetingEffect, IResettableEffect, ICompositeEffect
     {
         private readonly IEffectSelector _selector;
         private readonly Effect _effect;
@@ -41,6 +42,12 @@ namespace Assets.Scripts.CardEngine.Effects
             _childTargeting = effect as ITargetingEffect;
         }
 
+        public IEnumerable<Effect> GetChildEffects()
+        {
+            if (_effect != null)
+                yield return _effect;
+        }
+
         protected override void ResolveCore(EffectContext effectContext)
         {
             ResolveAfterTargets(effectContext);
@@ -62,6 +69,8 @@ namespace Assets.Scripts.CardEngine.Effects
                 else
                     targetsToUse = _selector?.Select(context) ?? new List<ITargetable>();
 
+                targetsToUse = CardApplicabilityRules.FilterTargets(context, targetsToUse);
+
                 context.Targets = targetsToUse;
 
                 if (_effect is ITargetingEffect targeting)
@@ -80,7 +89,8 @@ namespace Assets.Scripts.CardEngine.Effects
 
         public List<ITargetable> GetCandidates(EffectContext effectContext)
         {
-            return _selector.Select(effectContext);
+            var candidates = _selector.Select(effectContext);
+            return CardApplicabilityRules.FilterTargets(effectContext, candidates);
         }
 
         public bool TryGetTargetRequest(EffectContext context, out List<ITargetable> candidates, out string cancelReason)
@@ -118,6 +128,7 @@ namespace Assets.Scripts.CardEngine.Effects
             }
 
             candidates = _selector?.Select(context);
+            candidates = CardApplicabilityRules.FilterTargets(context, candidates);
             bool requiresPlayerChoice = _selector is IPlayerChoiceSelector choice && choice.RequiresPlayerChoice;
 
             if (requiresPlayerChoice && (candidates == null || candidates.Count == 0))
@@ -153,7 +164,7 @@ namespace Assets.Scripts.CardEngine.Effects
 
             if (_stage == Stage.NeedTargets)
             {
-                _chosenTargets = targets ?? new List<ITargetable>();
+                _chosenTargets = CardApplicabilityRules.FilterTargets(context, targets ?? new List<ITargetable>());
                 _stage = _childTargeting != null ? Stage.NeedChildTargets : Stage.Complete;
                 return;
             }
@@ -217,7 +228,7 @@ namespace Assets.Scripts.CardEngine.Effects
         [SerializeReference] [SerializeField] private EffectSelectorDefinition _selector;
         [SerializeReference] [SerializeField] private EffectDefinition _effect;
 
-        public override Effect CreateRuntimeEffect()
+        protected override Effect CreateRuntimeEffectCore()
         {
             IEffectSelector selector = _selector != null ? _selector.CreateRuntimeSelector() : null;
             Effect effect = _effect != null ? _effect.CreateRuntimeEffect() : null;

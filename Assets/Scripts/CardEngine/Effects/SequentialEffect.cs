@@ -8,7 +8,7 @@ namespace Assets.Scripts.CardEngine.Effects
     /// <summary>
     /// Runs a list of effects in order. If any effect needs targeting, the sequence pauses and resumes.
     /// </summary>
-    public sealed class SequentialEffect : Effect, ITargetingEffect, IResettableEffect
+    public sealed class SequentialEffect : Effect, ITargetingEffect, IResettableEffect, ICompositeEffect
     {
         private readonly List<Effect> _effects;
         private int _index;
@@ -35,6 +35,8 @@ namespace Assets.Scripts.CardEngine.Effects
         {
             _effects = effects ?? new List<Effect>();
         }
+
+        public IEnumerable<Effect> GetChildEffects() => _effects;
 
         protected override void ResolveCore(EffectContext effectContext)
         {
@@ -177,7 +179,7 @@ namespace Assets.Scripts.CardEngine.Effects
         [SerializeReference]
         [SerializeField] private List<EffectDefinition> _effects = new();
 
-        public override Effect CreateRuntimeEffect()
+        protected override Effect CreateRuntimeEffectCore()
         {
             var runtime = new List<Effect>();
             if (_effects != null)

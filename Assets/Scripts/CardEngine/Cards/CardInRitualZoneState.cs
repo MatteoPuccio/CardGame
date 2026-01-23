@@ -11,12 +11,10 @@ namespace Assets.Scripts.CardEngine.Cards
 
         public void Enter(CardView view)
         {
-            // No-op
         }
 
         public void Exit(CardView view)
         {
-            // No-op
         }
 
         public void OnMouseDown(CardView view)

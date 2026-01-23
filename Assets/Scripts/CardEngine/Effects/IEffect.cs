@@ -9,6 +9,8 @@ namespace Assets.Scripts.CardEngine.Effects
     [System.Serializable]
     public abstract class Effect
     {
+        public bool IsOptional { get; set; }
+
         /// <summary>
         /// Resolves the effect. Subclasses should override ResolveCore for the actual logic.
         /// This method ensures context and targets are never null.
@@ -46,6 +48,41 @@ namespace Assets.Scripts.CardEngine.Effects
             reason = null;
             return true;
         }
+    }
+
+    /// <summary>
+    /// Implemented by effects that contain child effects (e.g., wrappers and sequences).
+    /// Enables generic traversal for pre-resolution preparation steps.
+    /// </summary>
+    public interface ICompositeEffect
+    {
+        IEnumerable<Effect> GetChildEffects();
+    }
+
+    /// <summary>
+    /// Implemented by effects that require asynchronous preparation before resolution
+    /// (e.g., prompting the player to choose cards from a zone).
+    /// </summary>
+    public interface IPreResolveEffect
+    {
+        System.Threading.Tasks.Task<PreResolveResult> PrepareAsync(EffectContext context);
+    }
+
+    public readonly struct PreResolveResult
+    {
+        public bool Ok { get; }
+        public string CancelReason { get; }
+
+        public PreResolveResult(bool ok, string cancelReason)
+        {
+            Ok = ok;
+            CancelReason = cancelReason;
+        }
+
+        public static PreResolveResult Success() => new PreResolveResult(true, null);
+
+        public static PreResolveResult Cancel(string reason)
+            => new PreResolveResult(false, string.IsNullOrWhiteSpace(reason) ? "Cancelled." : reason);
     }
 
     /// <summary>

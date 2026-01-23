@@ -22,7 +22,7 @@ namespace Assets.Scripts.CardEngine.Effects
     [Serializable]
     public sealed class DestroyEffectDefinition : EffectDefinition
     {
-        public override Effect CreateRuntimeEffect() => new DestroyEffect();
+        protected override Effect CreateRuntimeEffectCore() => new DestroyEffect();
     }
 }
 

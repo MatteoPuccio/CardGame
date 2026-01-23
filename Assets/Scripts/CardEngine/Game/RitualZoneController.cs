@@ -148,9 +148,7 @@ namespace Assets.Scripts.CardEngine.Game
 
 			if (_ritualZoneView2 != null && !view2Occupied)
 				return _ritualZoneView2;
-
-			// Fallback: just use view1 (it supports multiple cards visually).
-			return _ritualZoneView1 != null ? _ritualZoneView1 : _ritualZoneView2;
+			return null;
 		}
 
 		private bool IsViewOccupied(RitualZoneView view)

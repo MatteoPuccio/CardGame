@@ -15,7 +15,7 @@ namespace Assets.Scripts.CardEngine.UI
             _option = option;
         }
 
-        public bool HandleClick(Assets.Scripts.UICardView view, PointerEventData eventData)
+        public bool HandleClick(UICardView view, PointerEventData eventData)
         {
             if (eventData == null || eventData.button != PointerEventData.InputButton.Left)
                 return false;

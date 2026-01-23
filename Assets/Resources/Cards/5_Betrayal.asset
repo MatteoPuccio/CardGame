@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22f386d2fef3469438d3476f01ff8bbc, type: 3}
+  m_Name: 5_Betrayal
+  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.CardEngine.Cards.ScriptableCard
+  id: 5
+  cardName: Betrayal
+  effectText: 'Play: Select and destroy a friendly troop, draw 2 cards.'
+  category: 1
+  deployCost: 1
+  power: 0
+  health: 1
+  race: -1
+  keywords: 
+  spellSchool: 5
+  triggeredEffects:
+  - optional: 0
+    effect:
+      rid: 4283266804966228061
+    condition:
+      rid: 4283266804966228059
+  rapidEffects: []
+  ritualStageEffects: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 4283266804966228059
+      type: {class: WhenThisIsPlayedConditionDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data: 
+    - rid: 4283266804966228061
+      type: {class: SequentialEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        _effects:
+        - rid: 4283266804966228062
+        - rid: 4283266804966228065
+    - rid: 4283266804966228062
+      type: {class: TargetedEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        _selector:
+          rid: 4283266804966228063
+        _effect:
+          rid: 4283266804966228064
+    - rid: 4283266804966228063
+      type: {class: SingleCardInPlaySelectorDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        _mustBeOwnedBySourceOwner: 1
+        _mustBeType: 0
+    - rid: 4283266804966228064
+      type: {class: DestroyEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data: 
+    - rid: 4283266804966228065
+      type: {class: DrawEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        _drawNumber: 2
+        _drawAmountDynamic:
+          rid: 4283266804966228066
+    - rid: 4283266804966228066
+      type: {class: ConstantAmountDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        Value: 0

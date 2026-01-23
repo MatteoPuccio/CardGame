@@ -1,4 +1,3 @@
-using TMPro;
 using UnityEngine;
 
 using Assets.Scripts.CardEngine.Cards;
@@ -11,7 +10,6 @@ namespace Assets.Scripts
 
 		[SerializeField] private RectTransform _previewParent;
 		[SerializeField] private UIController _uiController;
-		[SerializeField] private GameObject _fallbackPrefab;
 		[SerializeField, Min(0.1f)] private float _previewScale = 3.0f;
 
 		private GameObject _currentPreview;
@@ -88,7 +86,6 @@ namespace Assets.Scripts
 				return;
 
 			var prefab = _uiController != null ? _uiController.GetUIPrefabForCard(card) : null;
-			prefab ??= _fallbackPrefab;
 			if (prefab == null)
 				return;
 
@@ -113,8 +110,12 @@ namespace Assets.Scripts
 			var canvasGroup = _currentPreview.GetComponent<CanvasGroup>();
 			if (canvasGroup == null)
 				canvasGroup = _currentPreview.AddComponent<CanvasGroup>();
-			canvasGroup.interactable = false;
-			canvasGroup.blocksRaycasts = false;
+			// The preview should be clickable (for race tag, etc.) but we’ll suppress default card-click behavior.
+			canvasGroup.interactable = true;
+			canvasGroup.blocksRaycasts = true;
+
+			if (_currentPreview.GetComponent<UICardPreview>() == null)
+				_currentPreview.AddComponent<UICardPreview>();
 
 			var view = _currentPreview.GetComponent<UICardView>();
 			if (view != null)

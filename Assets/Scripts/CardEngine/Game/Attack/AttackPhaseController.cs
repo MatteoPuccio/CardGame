@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Assets.Scripts.CardEngine.Board;
 using Assets.Scripts.CardEngine.Cards;
 using Assets.Scripts.CardEngine.Events;
+using Assets.Scripts.CardEngine.Keywords;
 using UnityEngine;
 
 namespace Assets.Scripts.CardEngine.Game
@@ -153,27 +155,12 @@ namespace Assets.Scripts.CardEngine.Game
 				return false;
 			if (attacker.Behavior is not TroopBehavior)
 				return false;
-			if (!IsInPlayZone(attacker))
+			if (!BoardQueryUtils.IsInPlayZone(attacker))
 				return false;
 			if (_attackersThatAttackedThisPhase.Contains(attacker))
 				return false;
 
 			return true;
-		}
-
-		private static bool IsInPlayZone(Card card)
-		{
-			var owner = card?.Owner;
-			var zones = owner?.PlayZones;
-			if (zones == null)
-				return false;
-			for (int i = 0; i < zones.Count; i++)
-			{
-				var zone = zones[i];
-				if (zone != null && zone.OccupyingCard == card)
-					return true;
-			}
-			return false;
 		}
 
 		private void PrepareNextDeclaration()
@@ -246,7 +233,7 @@ namespace Assets.Scripts.CardEngine.Game
 			}
 		}
 
-		private static List<PendingAttackDamage> BuildPendingDamage(AttackDeclaration declaration)
+		private List<PendingAttackDamage> BuildPendingDamage(AttackDeclaration declaration)
 		{
 			var result = new List<PendingAttackDamage>();
 			var attacker = declaration?.Attacker;
@@ -264,9 +251,9 @@ namespace Assets.Scripts.CardEngine.Game
 				int defAtk = defenderTroop.Power;
 				if (defAtk < 0) defAtk = 0;
 
-				// Hearthstone-style: both deal their Power simultaneously.
 				result.Add(new PendingAttackDamage(instigator: attacker, target: defenderCard, amount: atk));
 				result.Add(new PendingAttackDamage(instigator: defenderCard, target: attacker, amount: defAtk));
+				_bus?.Publish(new AttackModifyPendingDamageEvent(declaration, result));
 				return result;
 			}
 

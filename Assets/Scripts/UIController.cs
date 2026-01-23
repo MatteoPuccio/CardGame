@@ -487,13 +487,7 @@ namespace Assets.Scripts
 			if (uiView != null)
 			{
 				uiView.Bind(card);
-				return;
 			}
-
-			// Fallback: if the prefab still uses legacy UI.Text.
-			var label = item != null ? item.GetComponentInChildren<Text>(includeInactive: true) : null;
-			if (label != null)
-				label.text = card != null ? card.Name : "<null>";
 		}
 
 		private static void FinalizeLayout(ScrollRect scrollRect, RectTransform content)

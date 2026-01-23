@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Assets.Scripts.CardEngine.Board;
 using Assets.Scripts.CardEngine.Cards;
 using Assets.Scripts.CardEngine.Events;
+using Assets.Scripts.CardEngine.Keywords;
 using UnityEngine;
 
 namespace Assets.Scripts.CardEngine.Game
@@ -10,6 +11,10 @@ namespace Assets.Scripts.CardEngine.Game
     public class GameState
     {
         public TargetingManager Targeting { get; } = new TargetingManager();
+
+        public IOptionalEffectPrompter OptionalEffectPrompter { get; set; } = new AutoDeclineOptionalEffectPrompter();
+
+        public ISelectCardFromZonePrompter SelectCardFromZonePrompter { get; set; } = new AutoCancelSelectCardFromZonePrompter();
 
         public RapidEffectChainSystem RapidEffectChain { get; set; }
 
@@ -24,12 +29,18 @@ namespace Assets.Scripts.CardEngine.Game
 
         private readonly EventBus _eventBus;
 
+        private readonly TriggeredEffectSystem _triggeredEffects;
+
         public EventBus EventBus => _eventBus;
 
         public GameState(EventBus bus)
         {
             _eventBus = bus;
 			Attack = new AttackPhaseController(this);
+			KeywordSystem.Attach(this);
+
+            _triggeredEffects = new TriggeredEffectSystem(this);
+            _triggeredEffects.Bind(_eventBus);
         }
 
         public void AddPlayers(Player p1, Player p2)
@@ -87,8 +98,14 @@ namespace Assets.Scripts.CardEngine.Game
             if (target.Behavior is not TroopBehavior troop)
                 return false;
 
+            int before = troop.Health;
             troop.ApplyDamage(amount);
-            _eventBus?.Publish(new TroopDamagedEvent(target, amount, instigator));
+            int after = troop.Health;
+            int dealt = before - after;
+            if (dealt < 0) dealt = 0;
+
+            if (dealt > 0)
+                _eventBus?.Publish(new TroopDamagedEvent(target, dealt, instigator));
 
             if (!troop.IsDead)
                 return true;
@@ -160,9 +177,13 @@ namespace Assets.Scripts.CardEngine.Game
             ICardZone fromZone,
             ICardZone toZone,
             ICardInteractionState interactionState,
+            bool ignoreDeployCost,
             out int deployCost)
         {
             deployCost = GetTroopDeployCost(card, fromZone, toZone);
+
+            if (ignoreDeployCost)
+                deployCost = 0;
 
             if (deployCost > 0 && owner.DeployPoints < deployCost)
             {
@@ -205,7 +226,12 @@ namespace Assets.Scripts.CardEngine.Game
             return true;
         }
 
-        public bool MoveToZone(Card card, ICardZone fromZone, ICardZone toZone, ICardInteractionState interactionState = null)
+        public bool MoveToZone(
+            Card card,
+            ICardZone fromZone,
+            ICardZone toZone,
+            ICardInteractionState interactionState = null,
+            bool ignoreDeployCost = false)
         {
             Debug.Log("InteractionState: " + (interactionState == null ? "null" : interactionState.Name));
             if (card == null || toZone == null || fromZone == null) {
@@ -218,24 +244,18 @@ namespace Assets.Scripts.CardEngine.Game
                 return false;
             }
 
-            if (!TryValidateMove(card, owner, fromZone, toZone, interactionState, out int deployCost))
+            if (!TryValidateMove(card, owner, fromZone, toZone, interactionState, ignoreDeployCost, out int deployCost))
                 return false;
 
             if (!TryTransferCard(card, owner, fromZone, toZone))
                 return false;
 
-            if (deployCost > 0)
+            if (deployCost > 0 && !ignoreDeployCost)
                 owner.DeployPoints -= deployCost;
 
             _eventBus.Publish(new CardMovedEvent(card, owner, from: fromZone.ZoneName, to: toZone.ZoneName));
 
             return true;
-        }
-
-        // Back-compat alias (older call sites). Prefer MoveToZone.
-        public bool TryMoveToZone(Card card, ICardZone fromZone, ICardZone toZone, ICardInteractionState interactionState = null)
-        {
-            return MoveToZone(card, fromZone, toZone, interactionState);
         }
 
         public List<ITargetable> GetEnemyCharacters(Player player)

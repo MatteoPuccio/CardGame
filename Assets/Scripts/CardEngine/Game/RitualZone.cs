@@ -11,7 +11,7 @@ namespace Assets.Scripts.CardEngine.Game
         private readonly Player _owner;
         private readonly GameState _gameState;
 
-        public string ZoneName => "RitualZone";
+        public string ZoneName => ZoneNames.RitualZone;
         public Player Owner => _owner;
         public GameState GameState => _gameState;
         public IReadOnlyList<Card> Cards => _cards.Cards;

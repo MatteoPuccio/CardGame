@@ -1,7 +1,11 @@
 using System;
+using System.Threading.Tasks;
 using UnityEngine;
 using Assets.Scripts.CardEngine.Board;
 using Assets.Scripts.CardEngine.Game;
+using Assets.Scripts.CardEngine.Events;
+using Assets.Scripts.CardEngine.Effects;
+using System.Collections.Generic;
 
 namespace Assets.Scripts.CardEngine.Cards
 {
@@ -58,7 +62,7 @@ namespace Assets.Scripts.CardEngine.Cards
             }
         }
 
-        public void OnMouseUp(CardView view)
+        public async void OnMouseUp(CardView view)
         {
             isDragging = false;
 
@@ -70,7 +74,7 @@ namespace Assets.Scripts.CardEngine.Cards
 
             if (IsNonBoardCard(view))
             {
-                if (!HandleNonBoardCardRelease(view))
+                if (!await HandleNonBoardCardReleaseAsync(view))
                 {
                     OwnerHandView.ReturnCard(view);
                 }
@@ -79,7 +83,7 @@ namespace Assets.Scripts.CardEngine.Cards
 
             if (TryPlaceCardInZone(view, out PlayAreaZone zone, out PlayAreaZoneView zoneView))
             {
-                HandlePlacedInZone(view, zone, zoneView);
+                await HandlePlacedInZoneAsync(view, zone, zoneView);
                 return;
             }
 
@@ -98,7 +102,7 @@ namespace Assets.Scripts.CardEngine.Cards
             return view?.CardData?.Behavior != null && !view.CardData.Behavior.RequiresPlayZone;
         }
 
-        private bool HandleNonBoardCardRelease(CardView view)
+        private async Task<bool> HandleNonBoardCardReleaseAsync(CardView view)
         {
             if (view.CardData.GameState == null || view.CardData.Owner?.Hand == null || view.CardData.Owner?.Cemetery == null)
                 return false;
@@ -114,7 +118,7 @@ namespace Assets.Scripts.CardEngine.Cards
                     return false;
             }
 
-            return TryBeginTargetingOrPlay(view, view.CardData.Owner.Hand, onCancelled: () => OwnerHandView.ReturnCard(view));
+            return await TryBeginTargetingOrPlayAsync(view, view.CardData.Owner.Hand, onCancelled: () => OwnerHandView.ReturnCard(view));
         }
 
         private bool TryPlaceCardInZone(CardView view, out PlayAreaZone zone, out PlayAreaZoneView zoneView)
@@ -128,7 +132,7 @@ namespace Assets.Scripts.CardEngine.Cards
                      view.CardData.GameState.MoveToZone(view.CardData, view.CardData.Owner.Hand, zone, this);
         }
 
-        private void HandlePlacedInZone(CardView view, PlayAreaZone zone, PlayAreaZoneView zoneView)
+        private async Task HandlePlacedInZoneAsync(CardView view, PlayAreaZone zone, PlayAreaZoneView zoneView)
         {
             if (view == null || zone == null || zoneView == null)
                 return;
@@ -138,10 +142,9 @@ namespace Assets.Scripts.CardEngine.Cards
             view.OccupiedZone = zone;
             view.OccupiedZoneView = zoneView;
 
-            if (TryBeginTargetingOrPlay(view, view.CardData.Owner.Hand, onCancelled: () => RollbackPlacedCardToHand(view, zone)))
-                return;
-
-            RollbackPlacedCardToHand(view, zone);
+            bool began = await TryBeginTargetingOrPlayAsync(view, view.CardData.Owner.Hand, onCancelled: () => RollbackPlacedCardToHand(view, zone));
+            if (!began)
+                RollbackPlacedCardToHand(view, zone);
         }
 
         private void RollbackPlacedCardToHand(CardView view, PlayAreaZone zone)
@@ -162,7 +165,7 @@ namespace Assets.Scripts.CardEngine.Cards
             OwnerHandView.ReturnCard(view);
         }
 
-        private static bool TryBeginTargetingOrPlay(CardView view, ICardZone sourceZone, Action onCancelled = null)
+        private static async Task<bool> TryBeginTargetingOrPlayAsync(CardView view, ICardZone sourceZone, Action onCancelled = null)
         {
             if (view?.CardData == null)
                 return false;
@@ -173,7 +176,10 @@ namespace Assets.Scripts.CardEngine.Cards
             if (gameState == null)
                 return false;
 
-            if (!card.TryBeginPlay(sourceZone, out var session, out var candidates))
+            var playEffects = GetPlayTriggeredEffects(card);
+            var playOverride = await BuildPlayOverrideAsync(gameState, card, playEffects);
+
+            if (!card.TryBeginPlay(sourceZone, playOverride, out var session, out var candidates))
                 return false;
 
             if (candidates != null && candidates.Count > 0)
@@ -183,6 +189,34 @@ namespace Assets.Scripts.CardEngine.Cards
 
             return true;
         }
+
+        private static List<Effect> GetPlayTriggeredEffects(Card card)
+        {
+            if (card == null)
+            {
+                return null;
+            }
+
+            var preview = new CardPlayedEvent(card: card, player: card.Owner);
+            var list = card.TriggeredEffects;
+            if (list == null)
+                return null;
+
+            var effects = new List<Effect>();
+            for (int i = 0; i < list.Count; i++)
+            {
+                var te = list[i];
+                if (te == null)
+                    continue;
+                if (te.Matches(card, preview) && te.Effect != null)
+                    effects.Add(te.Effect);
+            }
+
+            return effects.Count > 0 ? effects : null;
+        }
+
+        private static Task<IReadOnlyList<Effect>> BuildPlayOverrideAsync(GameState gameState, Card card, IReadOnlyList<Effect> playEffects)
+            => OptionalEffectPrompting.BuildOverrideAsync(gameState, card?.Owner, card, playEffects);
 
         private static bool IsOverPlayArea(CardView view)
         {

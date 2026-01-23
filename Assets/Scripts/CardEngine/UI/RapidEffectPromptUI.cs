@@ -20,8 +20,6 @@ namespace Assets.Scripts.CardEngine.UI
 
         [Header("Options")]
         [SerializeField] private Transform _optionsRoot;
-        [Tooltip("Optional: a plain UI Button used as an option template. If omitted, the UI will try to use your existing UICard prefabs via UIController.")]
-        [SerializeField] private Button _optionButtonPrefab;
 
         [Tooltip("Optional: if set, uses UIController.GetUIPrefabForCard(card) to create clickable card entries (supports multiple prefabs by CardType).")]
         [SerializeField] private UIController _uiController;
@@ -83,12 +81,6 @@ namespace Assets.Scripts.CardEngine.UI
             if (options == null || options.Count == 0)
                 return;
 
-            if (_optionButtonPrefab != null)
-            {
-                BuildOptionsUsingButtons(options);
-                return;
-            }
-
             BuildOptionsUsingCardPrefabs(options);
         }
 
@@ -100,19 +92,6 @@ namespace Assets.Scripts.CardEngine.UI
                     Destroy(_spawnedOptionObjects[i]);
             }
             _spawnedOptionObjects.Clear();
-        }
-
-        private void BuildOptionsUsingButtons(IReadOnlyList<RapidEffectOption> options)
-        {
-            for (int i = 0; i < options.Count; i++)
-            {
-                var option = options[i];
-                var button = Instantiate(_optionButtonPrefab, _optionsRoot);
-                button.gameObject.SetActive(true);
-                SetButtonLabel(button, option.ToString());
-                button.onClick.AddListener(() => Activate(option));
-                _spawnedOptionObjects.Add(button.gameObject);
-            }
         }
 
         private void BuildOptionsUsingCardPrefabs(IReadOnlyList<RapidEffectOption> options)
@@ -165,7 +144,6 @@ namespace Assets.Scripts.CardEngine.UI
             var rootRect = optionRoot.GetComponent<RectTransform>();
             if (rootRect == null)
             {
-                // Not a UI prefab; fallback to attaching handler on the root.
                 var direct = optionRoot.GetComponent<RapidEffectOptionClickHandler>();
                 if (direct == null)
                     direct = optionRoot.AddComponent<RapidEffectOptionClickHandler>();
@@ -215,7 +193,7 @@ namespace Assets.Scripts.CardEngine.UI
                 return;
             }
 
-            var label = item != null ? item.GetComponentInChildren<Text>(includeInactive: true) : null;
+            var label = item != null ? item.GetComponentInChildren<TMP_Text>(includeInactive: true) : null;
             if (label != null)
                 label.text = card != null ? card.Name : "<null>";
         }
@@ -229,12 +207,7 @@ namespace Assets.Scripts.CardEngine.UI
             if (tmp != null)
             {
                 tmp.text = text;
-                return;
             }
-
-            var legacy = button.GetComponentInChildren<Text>(includeInactive: true);
-            if (legacy != null)
-                legacy.text = text;
         }
 
         private void Activate(RapidEffectOption option)

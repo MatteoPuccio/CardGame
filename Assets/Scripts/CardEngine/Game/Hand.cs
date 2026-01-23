@@ -20,7 +20,7 @@ namespace Assets.Scripts.CardEngine.Game
 
         public event Action<Card> CardAdded;
         public event Action<Card> CardRemoved;
-        public string ZoneName => "Hand";
+        public string ZoneName => ZoneNames.Hand;
 
         public Hand(Player owner = null, GameState gameState = null, List<Card> cards = null)
         {
@@ -60,6 +60,24 @@ namespace Assets.Scripts.CardEngine.Game
         public bool ExitCard(Card card)
         {
 			return RemoveCard(card);
+        }
+
+        public bool Contains(Card card)
+        {
+            if (card == null)
+                return false;
+
+            var list = _cards.Cards;
+            if (list == null)
+                return false;
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (ReferenceEquals(list[i], card))
+                    return true;
+            }
+
+            return false;
         }
     }
 }

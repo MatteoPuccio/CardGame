@@ -9,7 +9,6 @@ using Assets.Scripts.CardEngine.UI;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
-using Microsoft.VisualBasic;
 using Assets.Scripts.CardEngine.Utils;
 
 
@@ -25,19 +24,18 @@ namespace Assets.Scripts
         [SerializeField] private CardFactory _cardFactory;
         [SerializeField] private GameObject _playerBoardPrefab;
         [SerializeField] private GameObject _board;
-        [SerializeField] private Transform _gameplayRoot;
+        private Transform _gameplayRoot;
 
         [Header("UI")]
         [SerializeField] private ScrollRect _localCemeteryScrollRect;
         [SerializeField] private ScrollRect _opponentCemeteryScrollRect;
         [SerializeField] private RapidEffectPromptUI _rapidEffectPromptUI;
+        [SerializeField] private OptionalEffectPromptUI _optionalEffectPromptUI;
+        [SerializeField] private SelectCardFromZonePromptUI _selectCardFromZonePromptUI;
 
         [Header("Card Data (ScriptableObjects)")]
         [SerializeField] private ScriptableDeck _player1Deck;
         [SerializeField] private ScriptableDeck _player2Deck;
-
-        [Header("Debug")]
-        [SerializeField] private bool _autoActivateFirstRapidEffect;
 
         [Header("Scene Flow")]
         [Tooltip("If set, this scene will be loaded when a player is defeated. If empty, the current scene is reloaded.")]
@@ -45,10 +43,6 @@ namespace Assets.Scripts
         [SerializeField] private SceneAsset _onDefeatLoadSceneAsset;
     #endif
         [SerializeField, HideInInspector] private string _onDefeatLoadScene;
-
-        // Legacy fields kept for Inspector migration/back-compat.
-        [SerializeField, HideInInspector] private string _onLocalDefeatLoadScene;
-        [SerializeField, HideInInspector] private string _onOpponentDefeatLoadScene;
 
         private bool _isEndingMatch;
         private GameState _gameState;
@@ -142,24 +136,6 @@ namespace Assets.Scripts
             }
 
             SceneManager.LoadScene(next, LoadSceneMode.Single);
-        }
-
-        private void OnValidate()
-        {
-#if UNITY_EDITOR
-            // Prefer the SceneAsset if assigned (supports drag & drop in Inspector).
-            if (_onDefeatLoadSceneAsset != null)
-                _onDefeatLoadScene = _onDefeatLoadSceneAsset.name;
-#endif
-
-            // If you had values set before the refactor, keep them working.
-            if (string.IsNullOrWhiteSpace(_onDefeatLoadScene))
-            {
-                if (!string.IsNullOrWhiteSpace(_onLocalDefeatLoadScene))
-                    _onDefeatLoadScene = _onLocalDefeatLoadScene;
-                else if (!string.IsNullOrWhiteSpace(_onOpponentDefeatLoadScene))
-                    _onDefeatLoadScene = _onOpponentDefeatLoadScene;
-            }
         }
 
         public void RestartMatch()
@@ -262,8 +238,22 @@ namespace Assets.Scripts
             _gameState.RapidEffectChain = _rapidEffectChain;
             _rapidEffectChain.Bind();
 
+            _gameState.OptionalEffectPrompter = _optionalEffectPromptUI != null
+                ? _optionalEffectPromptUI
+                : new AutoDeclineOptionalEffectPrompter();
+
+            _gameState.SelectCardFromZonePrompter = _selectCardFromZonePromptUI != null
+                ? _selectCardFromZonePromptUI
+                : new AutoCancelSelectCardFromZonePrompter();
+
             if (_rapidEffectPromptUI == null)
                 Debug.LogWarning("GameController: RapidEffectPromptUI is not assigned; rapid effects will auto-pass and no UI will show.");
+
+            if (_optionalEffectPromptUI == null)
+                Debug.LogWarning("GameController: OptionalEffectPromptUI is not assigned; optional effects will auto-decline.");
+
+            if (_selectCardFromZonePromptUI == null)
+                Debug.LogWarning("GameController: SelectCardFromZonePromptUI is not assigned; card selection prompts will auto-cancel.");
         }
 
         private static void LoadDeckFromScriptable(Player owner, ScriptableDeck deck, GameState gameState)

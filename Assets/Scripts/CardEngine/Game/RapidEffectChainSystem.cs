@@ -142,7 +142,11 @@ namespace Assets.Scripts.CardEngine.Game
             while (consecutivePasses < 2)
             {
                 var chosenMaybe = await ChooseValidOptionAsync(current, triggeringEvent, activatedThisWindow);
-                if (!chosenMaybe.HasValue || !TryCreateChainLink(chosenMaybe.Value, current, triggeringEvent, out var link))
+                var linkMaybe = chosenMaybe.HasValue
+                    ? await TryCreateChainLinkAsync(chosenMaybe.Value, current, triggeringEvent)
+                    : null;
+
+                if (!linkMaybe.HasValue)
                 {
                     consecutivePasses++;
                     Swap(ref current, ref other);
@@ -150,7 +154,7 @@ namespace Assets.Scripts.CardEngine.Game
                 }
 
                 Debug.Log($"[Chain] Link {chain.Count + 1}: {current?.Name ?? "<null>"} activates {chosenMaybe.Value}");
-                chain.Add(link);
+                chain.Add(linkMaybe.Value);
                 if (chosenMaybe.Value.Effect != null)
                     activatedThisWindow.Add(chosenMaybe.Value.Effect);
                 consecutivePasses = 0;
@@ -158,6 +162,89 @@ namespace Assets.Scripts.CardEngine.Game
             }
 
             ResolveChainLifo(chain);
+        }
+
+        private async Task<ChainLink?> TryCreateChainLinkAsync(RapidEffectOption chosen, Player activator, IGameEvent triggeringEvent)
+        {
+            if (chosen.Effect == null || chosen.SourceCard == null)
+                return null;
+
+            var ctx = CreateRapidContext(chosen.SourceCard, activator, triggeringEvent);
+
+            if (!chosen.Effect.CanActivate(ctx, out var cantReason))
+            {
+                Debug.Log($"RapidEffect: Cannot activate {chosen}: {cantReason}");
+                return null;
+            }
+
+            // If the rapid effect needs target selection, lock in targets now.
+            // Without this, TargetedEffect will treat the selector's candidate list as actual targets.
+            if (chosen.Effect.InnerEffect is ITargetingEffect targeting)
+            {
+                bool ok = await TryLockInTargetsAsync(chosen.SourceCard, targeting, ctx);
+                if (!ok)
+                    return null;
+            }
+
+            // Some effects require async preparation (e.g., selecting cards from a zone).
+            // Do this before costs are paid so a cancellation prevents commitment.
+            var prep = await PreResolvePreparationUtils.PrepareAsync(chosen.Effect, ctx);
+            if (!prep.Ok)
+                return null;
+
+            if (!chosen.Effect.TryPayCost(ctx, out var costReason))
+            {
+                Debug.Log($"RapidEffect: Cost not paid for {chosen}: {costReason}");
+                return null;
+            }
+
+            // Publish activation events immediately upon commitment so UI/game systems can react.
+            _bus?.Publish(new CardPlayedEvent(card: chosen.SourceCard, player: activator));
+            _bus?.Publish(new EffectActivatedEvent(source: chosen.SourceCard, effect: chosen.Effect, activator: activator));
+
+            // If the chosen rapid effect comes from a Spell currently in hand, treat it as "played":
+            // remove it from hand and move it to cemetery right away.
+            // This makes the prompt activation behave like an actual play.
+            var owner = chosen.SourceCard.Owner;
+            if (chosen.SourceCard.Category == CardType.Spell && owner?.Hand != null && owner.Cemetery != null &&
+                owner.Hand.Cards != null && owner.Hand.Cards.Contains(chosen.SourceCard))
+                _gameState.MoveToZone(chosen.SourceCard, owner.Hand, owner.Cemetery);
+
+            return new ChainLink(chosen.Effect, ctx);
+        }
+
+        private async Task<bool> TryLockInTargetsAsync(Card sourceCard, ITargetingEffect targeting, EffectContext ctx)
+        {
+            if (sourceCard == null || targeting == null || ctx == null)
+                return false;
+
+            // Drive the selection through the existing TargetingManager click pipeline.
+            // Note: this method awaits until the player picks targets (or cancels).
+            var tcs = new TaskCompletionSource<(bool ok, string reason)>();
+
+            var session = new TargetingOnlyEffectSession(
+                card: sourceCard,
+                targetingRoot: targeting,
+                context: ctx,
+                onFinished: (ok, reason) => tcs.TrySetResult((ok, reason)));
+
+            if (session.TryAdvance(out var candidates))
+            {
+                _gameState.Targeting.Begin(
+                    session,
+                    candidates,
+                    onCancelled: () =>
+                    {
+                        if (!tcs.Task.IsCompleted)
+                            tcs.TrySetResult((false, session.CancelReason));
+                    });
+            }
+
+            var (ok2, reason2) = await tcs.Task;
+            if (!ok2 && !string.IsNullOrWhiteSpace(reason2))
+                Debug.Log($"[Chain] Rapid targeting cancelled: {reason2}");
+
+            return ok2;
         }
 
         private async Task<RapidEffectOption?> ChooseValidOptionAsync(Player player, IGameEvent triggeringEvent, HashSet<RapidEffect> activatedThisWindow)
@@ -226,7 +313,7 @@ namespace Assets.Scripts.CardEngine.Game
             if (source?.Behavior is not RitualBehavior ritual)
                 return;
 
-            if (!RapidEffectConditionUtils.TryGetRitualStageIndex(link.Effect?.Condition, out int stageIndex))
+            if (!RapidEffectConditionUtils.TryGetRitualStageIndex(link.Effect?.Conditions, out int stageIndex))
                 return;
 
             ritual.TryConsumeStageFromRapid(stageIndex);
@@ -253,48 +340,11 @@ namespace Assets.Scripts.CardEngine.Game
             {
                 Source = source,
                 GameState = _gameState,
-                Targets = null,
+                Targets = new System.Collections.Generic.List<ITargetable>(),
                 TriggeringEvent = triggeringEvent,
                 Activator = activator,
                 ChainWindowSource = triggeringEvent,
             };
-        }
-
-        private bool TryCreateChainLink(RapidEffectOption chosen, Player activator, IGameEvent triggeringEvent, out ChainLink link)
-        {
-            link = default;
-
-            if (chosen.Effect == null || chosen.SourceCard == null)
-                return false;
-
-            var ctx = CreateRapidContext(chosen.SourceCard, activator, triggeringEvent);
-
-            if (!chosen.Effect.CanActivate(ctx, out var cantReason))
-            {
-                Debug.Log($"RapidEffect: Cannot activate {chosen}: {cantReason}");
-                return false;
-            }
-
-            if (!chosen.Effect.TryPayCost(ctx, out var costReason))
-            {
-                Debug.Log($"RapidEffect: Cost not paid for {chosen}: {costReason}");
-                return false;
-            }
-
-            // Publish activation events immediately upon commitment so UI/game systems can react.
-            _bus?.Publish(new CardPlayedEvent(card: chosen.SourceCard, player: activator));
-            _bus?.Publish(new EffectActivatedEvent(source: chosen.SourceCard, effect: chosen.Effect, activator: activator));
-
-            // If the chosen rapid effect comes from a Spell currently in hand, treat it as "played":
-            // remove it from hand and move it to cemetery right away.
-            // This makes the prompt activation behave like an actual play.
-            var owner = chosen.SourceCard.Owner;
-            if (chosen.SourceCard.Category == CardType.Spell && owner?.Hand != null && owner.Cemetery != null &&
-                owner.Hand.Cards != null && owner.Hand.Cards.Contains(chosen.SourceCard))
-                _gameState.MoveToZone(chosen.SourceCard, owner.Hand, owner.Cemetery);
-
-            link = new ChainLink(chosen.Effect, ctx);
-            return true;
         }
 
         private static void Swap(ref Player a, ref Player b)
@@ -308,7 +358,8 @@ namespace Assets.Scripts.CardEngine.Game
                 return new List<RapidEffectOption>();
 
             var excluded = GetCardToExcludeFromResponses(triggeringEvent);
-            return EnumerateActivatableOptions(player, triggeringEvent, activatedThisWindow, excluded).ToList();
+            var options = EnumerateActivatableOptions(player, triggeringEvent, activatedThisWindow, excluded).ToList();
+            return options;
         }
 
         private IEnumerable<RapidEffectOption> EnumerateActivatableOptions(
@@ -322,13 +373,10 @@ namespace Assets.Scripts.CardEngine.Game
                 if (card?.RapidEffects == null || card.RapidEffects.Count == 0)
                     continue;
 
-                if (excludedCard != null && ReferenceEquals(card, excludedCard))
-                    continue;
-
                 for (int i = 0; i < card.RapidEffects.Count; i++)
                 {
                     var eff = card.RapidEffects[i];
-                    if (TryBuildRapidOption(player, card, eff, triggeringEvent, activatedThisWindow, out var option))
+                    if (TryBuildRapidOption(player, card, eff, triggeringEvent, activatedThisWindow, excludedCard, out var option))
                         yield return option;
                 }
             }
@@ -340,6 +388,7 @@ namespace Assets.Scripts.CardEngine.Game
             RapidEffect effect,
             IGameEvent triggeringEvent,
             HashSet<RapidEffect> activatedThisWindow,
+            Card excludedCard,
             out RapidEffectOption option)
         {
             option = default;
@@ -348,6 +397,14 @@ namespace Assets.Scripts.CardEngine.Game
                 return false;
 
             if (activatedThisWindow != null && activatedThisWindow.Contains(effect))
+                return false;
+
+            // Default rule: the subject card doesn't respond to itself.
+            if (excludedCard != null && ReferenceEquals(sourceCard, excludedCard))
+                return false;
+
+            // Prevent rapid effects from being activatable while a card is sitting in the cemetery.
+            if (player?.Cemetery != null && player.Cemetery.Contains(sourceCard))
                 return false;
 
             var ctx = CreateRapidContext(sourceCard, player, triggeringEvent);
@@ -361,29 +418,42 @@ namespace Assets.Scripts.CardEngine.Game
 
         private static IEnumerable<Card> EnumerateCandidateCards(Player player)
         {
-            if (player?.Hand?.Cards != null)
-            {
-                var handCards = player.Hand.Cards;
-                for (int i = 0; i < handCards.Count; i++)
-                    yield return handCards[i];
-            }
+            var yielded = new HashSet<Card>();
 
-            if (player?.Rituals?.Cards != null)
-            {
-                var ritualCards = player.Rituals.Cards;
-                for (int i = 0; i < ritualCards.Count; i++)
-                    yield return ritualCards[i];
-            }
+            foreach (var card in EnumerateUniqueCards(player?.Hand?.Cards, yielded))
+                yield return card;
 
-            if (player?.PlayZones != null)
+            foreach (var card in EnumerateUniqueCards(player?.Rituals?.Cards, yielded))
+                yield return card;
+
+            foreach (var card in EnumerateUniqueFromPlayZones(player, yielded))
+                yield return card;
+        }
+
+        private static IEnumerable<Card> EnumerateUniqueCards(IReadOnlyList<Card> cards, HashSet<Card> yielded)
+        {
+            if (cards == null || yielded == null)
+                yield break;
+
+            for (int i = 0; i < cards.Count; i++)
             {
-                var zones = player.PlayZones;
-                for (int i = 0; i < zones.Count; i++)
-                {
-                    var zone = zones[i];
-                    if (zone?.OccupyingCard != null)
-                        yield return zone.OccupyingCard;
-                }
+                var c = cards[i];
+                if (c != null && yielded.Add(c))
+                    yield return c;
+            }
+        }
+
+        private static IEnumerable<Card> EnumerateUniqueFromPlayZones(Player player, HashSet<Card> yielded)
+        {
+            if (player?.PlayZones == null || yielded == null)
+                yield break;
+
+            var zones = player.PlayZones;
+            for (int i = 0; i < zones.Count; i++)
+            {
+                var c = zones[i]?.OccupyingCard;
+                if (c != null && yielded.Add(c))
+                    yield return c;
             }
         }
 

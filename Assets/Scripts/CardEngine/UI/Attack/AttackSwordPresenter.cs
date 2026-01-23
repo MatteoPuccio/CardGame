@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Assets.Scripts.CardEngine.Board;
 using Assets.Scripts.CardEngine.Cards;
 using Assets.Scripts.CardEngine.Events;
 using UnityEngine;
@@ -100,22 +101,7 @@ namespace Assets.Scripts.CardEngine.Game
 			var card = _cardView?.CardData;
 			if (card?.Behavior is not TroopBehavior)
 				return false;
-			return IsInPlayZone(card);
-		}
-
-		private static bool IsInPlayZone(Card card)
-		{
-			var owner = card?.Owner;
-			var zones = owner?.PlayZones;
-			if (zones == null)
-				return false;
-			for (int i = 0; i < zones.Count; i++)
-			{
-				var zone = zones[i];
-				if (zone != null && zone.OccupyingCard == card)
-					return true;
-			}
-			return false;
+			return BoardQueryUtils.IsInPlayZone(card);
 		}
 
 		private void BindIconFromPrefab()

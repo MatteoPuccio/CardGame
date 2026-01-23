@@ -13,7 +13,7 @@ namespace Assets.Scripts.CardEngine.Board
         [Min(1)] public int zoneCount = 7;
         [Range(0f, 0.45f)] public float marginPercent = 0.05f;
         [Range(0f, 0.5f)] public float gapPercent = 0f; // fraction of usable width
-        public float boardWidth = 7f; // fallback local width
+        public float boardWidth = 7f; // local width
         public float topOffset = 0.01f;
         public GameObject zonePrefab; // prefab must have PlayAreaZoneView
 

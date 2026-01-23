@@ -17,6 +17,12 @@ namespace Assets.Scripts.CardEngine.Cards
         [Header("Text")]
         public TextMeshPro NameText;
         public TextMeshPro DescriptionText;
+        
+        [Header("Spell School")]
+        [SerializeField] private TextMeshPro _spellSchoolText;
+        [Header("Race Tag")]
+        [SerializeField] private TMP_Text _raceText;
+        [SerializeField] private BoxCollider _raceClickCollider;
 
         [Header("Troop Properties")]
         [SerializeField] private Renderer _oneStar;
@@ -65,6 +71,9 @@ namespace Assets.Scripts.CardEngine.Cards
                 return;
             }
 
+            if (TryHandleRaceTagClick())
+                return;
+
             CardPreviewController.Show(CardData);
             _state?.OnMouseDown(this);
         }
@@ -89,10 +98,112 @@ namespace Assets.Scripts.CardEngine.Cards
 
         public void UpdateTroopStats(TroopBehavior troop)
         {
-            if (_powerText == null || _healthText == null)
+            if (troop == null)
                 return;
-            _powerText.text = troop.Power.ToString();
-            _healthText.text = troop.Health.ToString();
+
+            if (_powerText != null)
+                _powerText.text = troop.Power.ToString();
+            if (_healthText != null)
+                _healthText.text = troop.Health.ToString();
+
+            UpdateRaceTag(troop);
+        }
+
+        private void UpdateRaceTag(TroopBehavior troop)
+        {
+            if (_raceText == null)
+                return;
+
+            if (troop == null || !troop.HasRace)
+            {
+                _raceText.text = string.Empty;
+                EnsureRaceClickCollider(enabled: false);
+                return;
+            }
+
+            _raceText.text = troop.Race.ToString();
+            EnsureRaceClickCollider(enabled: true);
+            FitRaceClickColliderToText();
+        }
+
+        private void UpdateSpellSchoolText(SpellBehavior spell)
+        {
+            if (_spellSchoolText == null)
+                return;
+
+            if (spell == null || spell.School == SpellSchool.None)
+            {
+                _spellSchoolText.text = string.Empty;
+                return;
+            }
+
+            _spellSchoolText.text = spell.School.ToString();
+        }
+
+        private void EnsureRaceClickCollider(bool enabled)
+        {
+            if (_raceText == null)
+                return;
+
+            _raceClickCollider ??= _raceText.GetComponent<BoxCollider>();
+            if (_raceClickCollider == null)
+                _raceClickCollider = _raceText.gameObject.AddComponent<BoxCollider>();
+
+            _raceClickCollider.enabled = enabled;
+            _raceClickCollider.isTrigger = true;
+        }
+
+        private void FitRaceClickColliderToText()
+        {
+            if (_raceText == null || _raceClickCollider == null)
+                return;
+
+            if (_raceText is not TextMeshPro tmp)
+                return;
+
+            // TMP bounds are in local space.
+            var b = tmp.bounds;
+            _raceClickCollider.center = b.center;
+            _raceClickCollider.size = b.size;
+        }
+
+        private bool TryHandleRaceTagClick()
+        {
+            if (_raceText == null)
+                return false;
+            if (CardData?.Behavior is not TroopBehavior troop)
+                return false;
+            if (!troop.HasRace)
+                return false;
+
+            var cam = MainCamera != null ? MainCamera : Camera.main;
+            if (cam == null)
+                return false;
+
+            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+            var hits = Physics.RaycastAll(ray, 200f);
+            if (hits == null || hits.Length == 0)
+                return false;
+
+            // Only handle clicks on our race tag hitbox.
+            if (_raceClickCollider == null)
+                return false;
+
+            bool hitRace = false;
+            for (int i = 0; i < hits.Length; i++)
+            {
+                if (hits[i].collider == _raceClickCollider)
+                {
+                    hitRace = true;
+                    break;
+                }
+            }
+
+            if (!hitRace)
+                return false;
+
+            RaceInfoPanelController.Show(troop.Race, Input.mousePosition);
+            return true;
         }
     }
 }

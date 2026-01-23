@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Assets.Scripts.CardEngine.Cards;
+using Assets.Scripts.CardEngine.Events;
 
 namespace Assets.Scripts.CardEngine.Game
 {
@@ -134,9 +135,10 @@ namespace Assets.Scripts.CardEngine.Game
 				}
 			}
 
-			// Yugioh-style: only allow direct attack if opponent has no troops, unless keywords allow.
 			if (!opponentHasTroops || AttackRules.AttackerCanDirectAttackThroughTroops(attacker))
 				result.Add(opponent);
+
+			_gameState.EventBus?.Publish(new AttackDefendersQueryEvent(attacker, result));
 
 			return result;
 		}
@@ -197,8 +199,13 @@ namespace Assets.Scripts.CardEngine.Game
 
 		public static bool AttackerCanDirectAttackThroughTroops(Card attacker)
 		{
-			// Extension hook for future keywords.
-			return false;
+			var gs = attacker?.GameState;
+			if (gs?.EventBus == null || attacker == null)
+				return false;
+
+			var e = new AttackDirectAttackQueryEvent(attacker);
+			gs.EventBus.Publish(e);
+			return e.Allow;
 		}
 	}
 }

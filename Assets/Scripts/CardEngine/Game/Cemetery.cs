@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Assets.Scripts.CardEngine.Cards;
 using Assets.Scripts.CardEngine.Utils;
 
@@ -11,7 +12,7 @@ namespace Assets.Scripts.CardEngine.Game
         private readonly Player _owner;
         private readonly GameState _gameState;
 
-        public string ZoneName => "Cemetery";
+        public string ZoneName => ZoneNames.Cemetery;
         public int CardCount => _cards.Count;
         public Player Owner => _owner;
         public GameState GameState => _gameState;
@@ -51,6 +52,13 @@ namespace Assets.Scripts.CardEngine.Game
             }
         }
 
+        public bool Contains(Card card)
+        {
+            if (card == null)
+                return false;
+            return _cards.Cards.Contains(card);
+        }
+
         public bool CanEnter(Card card) => true;
 
         public bool EnterCard(Card card)
@@ -61,8 +69,10 @@ namespace Assets.Scripts.CardEngine.Game
 
         public bool ExitCard(Card card)
         {
-            RemoveCard(card);
-            return true;
+            bool removed = _cards.TakeCard(card);
+            if (removed)
+                CardRemoved?.Invoke(card);
+            return removed;
         }
     }
 }

@@ -2,7 +2,12 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using System.Collections.Generic;
 using Assets.Scripts.CardEngine.Cards;
+using Assets.Scripts.CardEngine.Game;
+using Assets.Scripts.CardEngine.Events;
+using Assets.Scripts.CardEngine.Effects;
+using System.Threading.Tasks;
 using System.Linq;
 
 namespace Assets.Scripts
@@ -19,6 +24,7 @@ namespace Assets.Scripts
 	{
 		[SerializeField] private TMP_Text _nameText;
 		[SerializeField] private TMP_Text _effectText;
+		[SerializeField] private TMP_Text _raceText;
 		[Header("Troop Properties")]
 		[SerializeField] private Image _oneStar;
         [SerializeField] private Image _twoStar;
@@ -89,12 +95,14 @@ namespace Assets.Scripts
 			{
 				ApplyDeployCostStars(troop.DeployCost);
 				UpdateTroopStats(troop);
+				UpdateRaceTag(troop);
 			}
 			else
 			{
 				ApplyDeployCostStars(0);
 				if (_powerText != null) _powerText.text = string.Empty;
 				if (_healthText != null) _healthText.text = string.Empty;
+				if (_raceText != null) _raceText.text = string.Empty;
 			}
 		}
 
@@ -125,11 +133,33 @@ namespace Assets.Scripts
 				_healthText.text = troop.Health.ToString();
 		}
 
+		private void UpdateRaceTag(TroopBehavior troop)
+		{
+			if (_raceText == null)
+				return;
+			if (troop == null || !troop.HasRace)
+			{
+				_raceText.text = string.Empty;
+				return;
+			}
+			_raceText.text = troop.Race.ToString();
+		}
+
 		public void OnPointerClick(PointerEventData eventData)
 		{
 			if (eventData == null || eventData.button != PointerEventData.InputButton.Left)
 				return;
 			if (CardData == null)
+				return;
+
+			// The preview instance is meant to be informational; only the race tag is interactive there.
+			if (IsInPreview())
+			{
+				TryHandleRaceTagClick(eventData);
+				return;
+			}
+
+			if (TryHandleRaceTagClick(eventData))
 				return;
 
 			if (HandleExternalClickHandlers(eventData))
@@ -139,6 +169,33 @@ namespace Assets.Scripts
 
 			CardPreviewController.Show(CardData);
 			ShiftClickMoveCemeteryToDeck();
+		}
+
+		private bool TryHandleRaceTagClick(PointerEventData eventData)
+		{
+			if (_raceText == null)
+				return false;
+			if (CardData?.Behavior is not TroopBehavior troop)
+				return false;
+			if (!troop.HasRace)
+				return false;
+			if (!IsInPreview())
+				return false;
+
+			var clicked = eventData.pointerCurrentRaycast.gameObject;
+			if (clicked == null)
+				return false;
+
+			if (!clicked.transform.IsChildOf(_raceText.transform))
+				return false;
+
+			RaceInfoPanelController.Show(troop.Race, eventData.position);
+			return true;
+		}
+
+		private bool IsInPreview()
+		{
+			return GetComponentInParent<UICardPreview>() != null;
 		}
 
 		private bool HandleExternalClickHandlers(PointerEventData eventData)
@@ -154,26 +211,87 @@ namespace Assets.Scripts
 
 		private bool QuickPlayFromHand()
 		{
+			if (!TryGetQuickPlayContext(out var gs, out var hand))
+				return false;
+
+			var playEffects = GetPlayTriggeredEffects(CardData);
+			if (OptionalEffectPrompting.HasAnyOptional(playEffects))
+			{
+				_ = QuickPlayFromHandAsync(gs, hand, playEffects);
+				return true;
+			}
+
+			// Reuse the same targeting/session pipeline used by CardInHandState.
+			if (!CardData.TryBeginPlay(hand, playEffectsOverride: null, out var session, out var candidates))
+				return false;
+			if (candidates != null && candidates.Count > 0)
+				gs.Targeting.Begin(session, candidates);
+			return true;
+		}
+
+		private bool TryGetQuickPlayContext(out GameState gameState, out ICardZone hand)
+		{
+			gameState = null;
+			hand = null;
+
 			// Default "play on click" for UI cards that are not draggable.
 			// We only do this for cards currently in the owner's hand that do NOT require a board zone (e.g., spells),
 			// matching the existing drag-only rule for troops.
-			var gs = CardData.GameState;
-			var cardOwner = CardData.Owner;
-			if (gs == null || cardOwner?.Hand == null)
+			if (CardData == null)
 				return false;
-			if (!cardOwner.Hand.Cards.Contains(CardData))
+
+			var gs = CardData.GameState;
+			var owner = CardData.Owner;
+			if (gs == null || owner?.Hand == null)
+				return false;
+			if (!owner.Hand.Cards.Contains(CardData))
 				return false;
 
 			bool isBoardCard = CardData.Behavior != null && CardData.Behavior.RequiresPlayZone;
 			if (isBoardCard)
 				return false;
 
-			// Reuse the same targeting/session pipeline used by CardInHandState.
-			if (!CardData.TryBeginPlay(cardOwner.Hand, out var session, out var candidates))
-				return false;
-			if (candidates != null && candidates.Count > 0)
-				gs.Targeting.Begin(session, candidates);
+			gameState = gs;
+			hand = owner.Hand;
 			return true;
+		}
+
+		private static List<Effect> GetPlayTriggeredEffects(Card card)
+		{
+			if (card == null)
+				return null;
+
+			var preview = new CardPlayedEvent(card: card, player: card.Owner);
+			var list = card.TriggeredEffects;
+			if (list == null)
+				return null;
+
+			var effects = new List<Effect>();
+			for (int i = 0; i < list.Count; i++)
+			{
+				var te = list[i];
+				if (te == null)
+					continue;
+				if (te.Matches(card, preview) && te.Effect != null)
+					effects.Add(te.Effect);
+			}
+
+			return effects.Count > 0 ? effects : null;
+		}
+
+		private async Task QuickPlayFromHandAsync(GameState gameState, ICardZone sourceZone, IReadOnlyList<Effect> playEffects)
+		{
+			if (CardData == null || gameState == null || sourceZone == null || playEffects == null || playEffects.Count == 0)
+				return;
+
+			var playOverride = await OptionalEffectPrompting.BuildOverrideAsync(gameState, CardData.Owner, CardData, playEffects);
+			if (playOverride == null)
+				playOverride = playEffects;
+			if (!CardData.TryBeginPlay(sourceZone, playOverride, out var session, out var candidates))
+				return;
+
+			if (candidates != null && candidates.Count > 0)
+				gameState.Targeting.Begin(session, candidates);
 		}
 
 		private void ShiftClickMoveCemeteryToDeck()

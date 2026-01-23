@@ -27,7 +27,7 @@ namespace Assets.Scripts.CardEngine.Game
         public bool WasCancelled => _wasCancelled;
         public string CancelReason => _cancelReason;
 
-        public CardPlaySession(Card card, ICardZone sourceZone, EffectContext context)
+        public CardPlaySession(Card card, ICardZone sourceZone, EffectContext context, Effect playRootEffect)
         {
             _card = card ?? throw new ArgumentNullException(nameof(card));
             _sourceZone = sourceZone;
@@ -35,7 +35,7 @@ namespace Assets.Scripts.CardEngine.Game
 
             _cardPlayedEvent = new CardPlayedEvent(card: _card, player: _card.Owner);
 
-            _rootEffect = _card.OnPlayEffect;
+            _rootEffect = playRootEffect;
             _targetingRoot = _rootEffect as ITargetingEffect;
 
             if (_rootEffect is IResettableEffect resettable)
@@ -107,6 +107,24 @@ namespace Assets.Scripts.CardEngine.Game
         {
             if (_wasCancelled)
                 return;
+
+            // Some effects require async preparation (e.g., selecting cards from a zone).
+            // Do this before opening the chain window so a cancellation prevents activation.
+            try
+            {
+                var prep = await PreResolvePreparationUtils.PrepareAsync(_rootEffect, _context);
+                if (!prep.Ok)
+                {
+                    Cancel(prep.CancelReason);
+                    return;
+                }
+            }
+            catch
+            {
+                // Preparation failures should cancel the play rather than partially resolve.
+                Cancel("Selection failed.");
+                return;
+            }
 
             var chain = _card?.GameState?.RapidEffectChain;
             if (chain != null && triggeringEvent != null)

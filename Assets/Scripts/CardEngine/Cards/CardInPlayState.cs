@@ -21,8 +21,6 @@ namespace Assets.Scripts.CardEngine.Cards
 
         public void OnMouseDown(CardView view)
         {
-            // Intentionally empty: cards in play are no longer moved back to hand on click.
-            // CardView.HandleClick() still shows the preview and handles targeting clicks.
         }
 
         public void OnMouseDrag(CardView view) { }

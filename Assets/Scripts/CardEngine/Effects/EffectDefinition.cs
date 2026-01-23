@@ -5,6 +5,12 @@ namespace Assets.Scripts.CardEngine.Effects
     [Serializable]
     public abstract class EffectDefinition
     {
-        public abstract Effect CreateRuntimeEffect();
+        public Effect CreateRuntimeEffect()
+        {
+            var effect = CreateRuntimeEffectCore();
+            return effect;
+        }
+
+        protected abstract Effect CreateRuntimeEffectCore();
     }
 }

@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 22f386d2fef3469438d3476f01ff8bbc, type: 3}
+  m_Name: 3_DraconicBookkeeper
+  m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.CardEngine.Cards.ScriptableCard
+  id: 3
+  cardName: Draconic Bookkeeper
+  effectText: 'Play: You can draw 1 card.'
+  category: 0
+  deployCost: 2
+  power: 3
+  health: 4
+  race: 0
+  keywords: 
+  spellSchool: 0
+  triggeredEffects:
+  - optional: 1
+    effect:
+      rid: 4283266778403962953
+    condition:
+      rid: 4283266778403962952
+  rapidEffects: []
+  ritualStageEffects: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 4283266778403962952
+      type: {class: WhenThisIsPlayedConditionDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data: 
+    - rid: 4283266778403962953
+      type: {class: DrawEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        _drawNumber: 1
+        _drawAmountDynamic:
+          rid: 4283266804966228058
+    - rid: 4283266804966228058
+      type: {class: ConstantAmountDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        Value: 0

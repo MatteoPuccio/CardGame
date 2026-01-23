@@ -1,0 +1,16 @@
+# TODO
+- Finire race traits
+- Clean-up generale
+- Aggiungere effetti:
+  - evocazione token
+  - danno/cura alle truppe
+- Aggiungere selectors:
+  - dal mazzo 
+  - dal cimitero
+  - dalla mano
+- Aggiungere conditions:
+  - 
+- Implementare i triggers:
+  - 
+- Buildings
+- Mazzo Rune (contiene rituali/)

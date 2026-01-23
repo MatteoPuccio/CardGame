@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using Assets.Scripts.CardEngine.Game;
 using Assets.Scripts.CardEngine.Effects;
 using Assets.Scripts.CardEngine.Events;
@@ -16,10 +17,14 @@ namespace Assets.Scripts.CardEngine.Cards
 		public CardType Category { get; }
 		public CardBehavior Behavior { get; }
 
+        private readonly HashSet<string> _tags = new(StringComparer.OrdinalIgnoreCase);
+
+        public IReadOnlyCollection<string> Tags => _tags;
+
         public Player Owner { get; }
         public GameState GameState { get; set; }
-        public Effect OnPlayEffect { get; set; }
         public List<RapidEffect> RapidEffects { get; } = new();
+        public List<TriggeredEffect> TriggeredEffects { get; } = new();
 
         public Card(
             string id, 
@@ -27,8 +32,8 @@ namespace Assets.Scripts.CardEngine.Cards
             Player owner,
             string name = "",
             string effectText = "",
-            Effect effect = null,
-            GameState gameState = null
+            GameState gameState = null,
+            IEnumerable<string> tags = null
         )
         {
             Id = id;
@@ -36,12 +41,60 @@ namespace Assets.Scripts.CardEngine.Cards
             EffectText = effectText;
 			Category = cardCategory;
             Owner = owner;
-            OnPlayEffect = effect;
             GameState = gameState;
 			Behavior = CardBehavior.Create(this, cardCategory);
+
+            if (tags != null)
+            {
+                foreach (var t in tags)
+                {
+                    if (string.IsNullOrWhiteSpace(t))
+                        continue;
+                    _tags.Add(t.Trim());
+                }
+            }
         }
 
-        public bool TryBeginPlay(ICardZone sourceZone, out CardPlaySession session, out List<ITargetable> candidates)
+        public bool HasTag(string tag)
+        {
+            if (string.IsNullOrWhiteSpace(tag))
+                return false;
+            return _tags.Contains(tag.Trim());
+        }
+
+        private Effect BuildPlayRootEffect(IReadOnlyList<Effect> playEffectsOverride)
+        {
+            if (playEffectsOverride != null)
+            {
+                if (playEffectsOverride.Count == 0)
+                    return null;
+                if (playEffectsOverride.Count == 1)
+                    return playEffectsOverride[0];
+                return new SequentialEffect(new List<Effect>(playEffectsOverride));
+            }
+
+            if (TriggeredEffects == null || TriggeredEffects.Count == 0)
+                return null;
+
+            var preview = new CardPlayedEvent(card: this, player: Owner);
+            var effects = new List<Effect>();
+            for (int i = 0; i < TriggeredEffects.Count; i++)
+            {
+                var te = TriggeredEffects[i];
+                if (te == null)
+                    continue;
+                if (te.Matches(this, preview) && te.Effect != null)
+                    effects.Add(te.Effect);
+            }
+
+            if (effects.Count == 0)
+                return null;
+            if (effects.Count == 1)
+                return effects[0];
+            return new SequentialEffect(effects);
+        }
+
+        public bool TryBeginPlay(ICardZone sourceZone, IReadOnlyList<Effect> playEffectsOverride, out CardPlaySession session, out List<ITargetable> candidates)
         {
             session = null;
             candidates = null;
@@ -59,7 +112,9 @@ namespace Assets.Scripts.CardEngine.Cards
                 Targets = null,
             };
 
-            session = new CardPlaySession(this, sourceZone, context);
+            var playRootEffect = BuildPlayRootEffect(playEffectsOverride);
+
+            session = new CardPlaySession(this, sourceZone, context, playRootEffect);
             session.TryAdvance(out candidates);
 
             if (session.WasCancelled)
@@ -70,6 +125,11 @@ namespace Assets.Scripts.CardEngine.Cards
             }
 
             return true;
+        }
+
+        public bool TryBeginPlay(ICardZone sourceZone, out CardPlaySession session, out List<ITargetable> candidates)
+        {
+            return TryBeginPlay(sourceZone, playEffectsOverride: null, out session, out candidates);
         }
 
 

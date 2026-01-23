@@ -1,11 +1,18 @@
 using System;
+using System.Collections.Generic;
 using Assets.Scripts.CardEngine.Cards;
-using Assets.Scripts.CardEngine.Events;
 using Assets.Scripts.CardEngine.Game;
+using Assets.Scripts.CardEngine.Utils;
 using UnityEngine;
 
 namespace Assets.Scripts.CardEngine.Effects
 {
+    public enum RapidEffectActivationFrequency
+    {
+        Whenever = 0,
+        OncePerTurn = 1,
+    }
+
     public sealed class RapidEffectContext : EffectContext
     {
         public Player Activator { get; set; }
@@ -17,293 +24,34 @@ namespace Assets.Scripts.CardEngine.Effects
         public object ChainWindowSource { get; set; }
     }
 
-    public interface IRapidEffectCondition
-    {
-        bool CanActivate(RapidEffectContext context, out string reason);
-    }
-
-    internal sealed class AndRapidEffectCondition : IRapidEffectCondition
-    {
-        private readonly IRapidEffectCondition _a;
-        private readonly IRapidEffectCondition _b;
-
-        internal IRapidEffectCondition Left => _a;
-        internal IRapidEffectCondition Right => _b;
-
-        public AndRapidEffectCondition(IRapidEffectCondition a, IRapidEffectCondition b)
-        {
-            _a = a;
-            _b = b;
-        }
-
-        public bool CanActivate(RapidEffectContext context, out string reason)
-        {
-            if (_a != null && !_a.CanActivate(context, out reason))
-                return false;
-            if (_b != null && !_b.CanActivate(context, out reason))
-                return false;
-
-            reason = null;
-            return true;
-        }
-    }
-
-    internal sealed class RitualStageAtLeastRapidCondition : IRapidEffectCondition
-    {
-        private readonly int _minStageIndex;
-
-        public RitualStageAtLeastRapidCondition(int minStageIndex)
-        {
-            _minStageIndex = Math.Max(0, minStageIndex);
-        }
-
-        public bool CanActivate(RapidEffectContext context, out string reason)
-        {
-            reason = null;
-
-            var source = context?.Source;
-            if (source == null)
-            {
-                reason = "Missing source.";
-                return false;
-            }
-
-            if (source.Behavior is not RitualBehavior ritual)
-            {
-                reason = "Not a ritual.";
-                return false;
-            }
-
-            if (ritual.StageIndex < _minStageIndex)
-            {
-                reason = $"Available from ritual stage {_minStageIndex + 1}.";
-                return false;
-            }
-
-            return true;
-        }
-    }
-
-    internal sealed class RitualStageEqualsRapidCondition : IRapidEffectCondition
-    {
-        private readonly int _stageIndex;
-
-        internal int StageIndex => _stageIndex;
-
-        public RitualStageEqualsRapidCondition(int stageIndex)
-        {
-            _stageIndex = Math.Max(0, stageIndex);
-        }
-
-        public bool CanActivate(RapidEffectContext context, out string reason)
-        {
-            reason = null;
-
-            var source = context?.Source;
-            if (source == null)
-            {
-                reason = "Missing source.";
-                return false;
-            }
-
-            if (source.Behavior is not RitualBehavior ritual)
-            {
-                reason = "Not a ritual.";
-                return false;
-            }
-
-            if (ritual.StageIndex != _stageIndex)
-            {
-                reason = $"Available at ritual stage {_stageIndex + 1}.";
-                return false;
-            }
-
-            return true;
-        }
-    }
-
-    internal sealed class RitualNotAdvancedThisTurnRapidCondition : IRapidEffectCondition
-    {
-        public bool CanActivate(RapidEffectContext context, out string reason)
-        {
-            reason = null;
-
-            var source = context?.Source;
-            if (source == null)
-            {
-                reason = "Missing source.";
-                return false;
-            }
-
-            if (source.Behavior is not RitualBehavior ritual)
-            {
-                reason = "Not a ritual.";
-                return false;
-            }
-
-            if (ritual.HasAdvancedThisTurn)
-            {
-                reason = "Ritual stage already advanced this turn.";
-                return false;
-            }
-
-            return true;
-        }
-    }
-
-    internal sealed class RitualMustBeInPlayRapidCondition : IRapidEffectCondition
-    {
-        public bool CanActivate(RapidEffectContext context, out string reason)
-        {
-            reason = null;
-
-            var source = context?.Source;
-            if (source == null)
-            {
-                reason = "Missing source.";
-                return false;
-            }
-
-            if (source.Behavior is not RitualBehavior)
-            {
-                reason = "Not a ritual.";
-                return false;
-            }
-
-            var owner = source.Owner;
-            if (owner?.Rituals == null)
-            {
-                reason = "Ritual zone not initialized.";
-                return false;
-            }
-
-            if (!owner.Rituals.Contains(source))
-            {
-                reason = "Ritual must be in play.";
-                return false;
-            }
-
-            return true;
-        }
-    }
-
-    internal static class RapidEffectConditionUtils
-    {
-        public static bool TryGetRitualStageIndex(IRapidEffectCondition condition, out int stageIndex)
-        {
-            stageIndex = default;
-            if (condition == null)
-                return false;
-
-            if (condition is RitualStageEqualsRapidCondition equals)
-            {
-                stageIndex = equals.StageIndex;
-                return true;
-            }
-
-            if (condition is AndRapidEffectCondition and)
-            {
-                if (TryGetRitualStageIndex(and.Left, out stageIndex))
-                    return true;
-                if (TryGetRitualStageIndex(and.Right, out stageIndex))
-                    return true;
-            }
-
-            return false;
-        }
-    }
-
     [Serializable]
-    public abstract class RapidEffectConditionDefinition
-    {
-        public abstract IRapidEffectCondition CreateRuntimeCondition();
-    }
-
-    [Serializable]
-    public sealed class AlwaysRapidConditionDefinition : RapidEffectConditionDefinition
-    {
-        public override IRapidEffectCondition CreateRuntimeCondition() => new AlwaysRapidCondition();
-
-        private sealed class AlwaysRapidCondition : IRapidEffectCondition
-        {
-            public bool CanActivate(RapidEffectContext context, out string reason)
-            {
-                reason = null;
-                return true;
-            }
-        }
-    }
-
-    [Serializable]
-    public sealed class OpponentDidSomethingConditionDefinition : RapidEffectConditionDefinition
-    {
-        public override IRapidEffectCondition CreateRuntimeCondition() => new OpponentDidSomethingCondition();
-
-        private sealed class OpponentDidSomethingCondition : IRapidEffectCondition
-        {
-            public bool CanActivate(RapidEffectContext context, out string reason)
-            {
-                reason = null;
-
-                if (context?.GameState == null)
-                {
-                    reason = "Missing game state.";
-                    return false;
-                }
-
-                if (context.Activator == null)
-                {
-                    reason = "Missing activator.";
-                    return false;
-                }
-
-                var actingPlayer = ResolveActingPlayer(context.TriggeringEvent, context.GameState);
-                if (actingPlayer == null)
-                {
-                    reason = "No opponent action detected.";
-                    return false;
-                }
-
-                if (actingPlayer == context.Activator)
-                {
-                    reason = "Must respond to an opponent action.";
-                    return false;
-                }
-
-                return true;
-            }
-
-            private static Player ResolveActingPlayer(IGameEvent triggeringEvent, GameState gameState)
-            {
-                if (triggeringEvent == null || gameState == null)
-                    return null;
-
-                return triggeringEvent switch
-                {
-                    CardPlayedEvent cpe when cpe.Player != null => cpe.Player,
-                    EffectActivatedEvent eae when eae.Activator != null => eae.Activator,
-                    TroopDamagedEvent tde when tde.Instigator != null => tde.Instigator.Owner,
-                    TroopDiedEvent tdie when tdie.Instigator != null => tdie.Instigator.Owner,
-                    CardDestroyedEvent cde when cde.Instigator != null => cde.Instigator.Owner,
-                    _ => null
-                };
-            }
-        }
-    }
-
-    [Serializable]
-    public sealed class RapidEffect : Effect, ICostPayingEffect
+    public sealed class RapidEffect : Effect, ICostPayingEffect, ICompositeEffect
     {
         public Effect InnerEffect { get; }
-        public IRapidEffectCondition Condition { get; }
+        public IReadOnlyList<IRapidEffectCondition> Conditions { get; }
 
-        public RapidEffect(Effect innerEffect, IRapidEffectCondition condition)
+        public RapidEffectActivationFrequency ActivationFrequency { get; }
+
+        private int _lastActivatedTurnNumber = int.MinValue;
+
+        public RapidEffect(
+            Effect innerEffect,
+            IReadOnlyList<IRapidEffectCondition> conditions,
+            RapidEffectActivationFrequency activationFrequency = RapidEffectActivationFrequency.Whenever)
         {
             InnerEffect = innerEffect;
-            Condition = condition;
+            Conditions = conditions;
+            ActivationFrequency = activationFrequency;
         }
 
-        public override bool IsOncePerTurn => InnerEffect?.IsOncePerTurn ?? false;
+        public IEnumerable<Effect> GetChildEffects()
+        {
+            if (InnerEffect != null)
+                yield return InnerEffect;
+        }
+
+        public override bool IsOncePerTurn =>
+            ActivationFrequency == RapidEffectActivationFrequency.OncePerTurn || (InnerEffect?.IsOncePerTurn ?? false);
 
         public override bool CanActivate(EffectContext context, out string reason)
         {
@@ -319,8 +67,30 @@ namespace Assets.Scripts.CardEngine.Effects
                 return false;
             }
 
-            if (Condition != null && !Condition.CanActivate(rapidContext, out reason))
-                return false;
+            if (IsOncePerTurn)
+            {
+                if (rapidContext.GameState == null)
+                {
+                    reason = "Missing game state.";
+                    return false;
+                }
+
+                if (_lastActivatedTurnNumber == rapidContext.GameState.TurnNumber)
+                {
+                    reason = "Rapid effect is once per turn.";
+                    return false;
+                }
+            }
+
+            if (Conditions != null)
+            {
+                for (int i = 0; i < Conditions.Count; i++)
+                {
+                    var c = Conditions[i];
+                    if (c != null && !c.CanActivate(rapidContext, out reason))
+                        return false;
+                }
+            }
 
             return InnerEffect.CanActivate(context, out reason);
         }
@@ -334,10 +104,25 @@ namespace Assets.Scripts.CardEngine.Effects
             }
 
             if (InnerEffect is ICostPayingEffect costPaying)
-                return costPaying.TryPayCost(context, out reason);
+            {
+                bool ok = costPaying.TryPayCost(context, out reason);
+                if (ok)
+                    ConsumeOncePerTurnIfNeeded(context);
+                return ok;
+            }
 
             reason = null;
+            ConsumeOncePerTurnIfNeeded(context);
             return true;
+        }
+
+        private void ConsumeOncePerTurnIfNeeded(EffectContext context)
+        {
+            if (!IsOncePerTurn)
+                return;
+
+            int turn = context?.GameState?.TurnNumber ?? int.MinValue;
+            _lastActivatedTurnNumber = turn;
         }
 
         protected override void ResolveCore(EffectContext effectContext)
@@ -349,7 +134,13 @@ namespace Assets.Scripts.CardEngine.Effects
     [Serializable]
     public abstract class RapidEffectDefinition : EffectDefinition
     {
-        public sealed override Effect CreateRuntimeEffect() => CreateRuntimeRapidEffect();
+        [Tooltip("Whether this rapid effect can be activated whenever or only once per turn.")]
+        public RapidEffectActivationFrequency activationFrequency = RapidEffectActivationFrequency.Whenever;
+
+        [Tooltip("If true, the owning player may choose to activate this rapid effect or skip it.")]
+        public bool optional;
+
+        protected sealed override Effect CreateRuntimeEffectCore() => CreateRuntimeRapidEffect();
 
         public abstract RapidEffect CreateRuntimeRapidEffect();
     }
@@ -359,18 +150,31 @@ namespace Assets.Scripts.CardEngine.Effects
     {
         [SerializeReference] public EffectDefinition effect;
 
-        [Tooltip("Optional activation condition (e.g., opponent did something). If omitted, the rapid effect is always activatable.")]
-        [SerializeReference] public RapidEffectConditionDefinition condition;
+        [Tooltip("Optional activation conditions. All conditions must pass for the rapid effect to be activatable.")]
+        [SerializeReference] public List<RapidEffectConditionDefinition> conditions = new();
 
         public override RapidEffect CreateRuntimeRapidEffect()
         {
             var runtimeEffect = effect != null ? effect.CreateRuntimeEffect() : null;
-            var runtimeCondition = condition != null ? condition.CreateRuntimeCondition() : null;
+
+            var runtimeConditions = new List<IRapidEffectCondition>();
+            if (conditions != null)
+            {
+                for (int i = 0; i < conditions.Count; i++)
+                {
+                    var def = conditions[i];
+                    var c = def != null ? def.CreateRuntimeCondition() : null;
+                    if (c != null)
+                        runtimeConditions.Add(c);
+                }
+            }
 
             if (runtimeEffect == null)
                 return null;
 
-            return new RapidEffect(runtimeEffect, runtimeCondition);
+            var rapid = new RapidEffect(runtimeEffect, runtimeConditions, activationFrequency);
+            rapid.IsOptional = optional;
+            return rapid;
         }
     }
 

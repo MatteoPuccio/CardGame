@@ -4,6 +4,7 @@ using System;
 using Assets.Scripts.CardEngine.Effects;
 using Assets.Scripts.CardEngine.Game;
 using System.Collections.Generic;
+using Assets.Scripts.CardEngine.Keywords;
 
 namespace Assets.Scripts.CardEngine.Cards
 {
@@ -54,6 +55,12 @@ namespace Assets.Scripts.CardEngine.Cards
 		public override string Name => "Troop";
         public int DeployCost;
 
+                private readonly HashSet<CardKeyword> _baseKeywords = new();
+                private readonly HashSet<CardKeyword> _raceKeywords = new();
+
+        public bool HasRace { get; private set; }
+        public TroopRaces Race { get; private set; }
+
         public int Power { get; private set; }
         public int MaxHealth { get; private set; }
         public int Health { get; private set; }
@@ -71,6 +78,45 @@ namespace Assets.Scripts.CardEngine.Cards
             Health = MaxHealth;
             OnStatsChanged?.Invoke(this);
         }
+
+        public void SetRace(TroopRaces race)
+        {
+            HasRace = race != TroopRaces.None;
+            Race = race;
+            OnStatsChanged?.Invoke(this);
+        }
+
+        public void SetKeywords(IEnumerable<CardKeyword> baseKeywords, IEnumerable<CardKeyword> extraKeywords = null)
+        {
+            _baseKeywords.Clear();
+            _raceKeywords.Clear();
+            AddKeywords(baseKeywords);
+            SetRaceKeywords(extraKeywords);
+            OnStatsChanged?.Invoke(this);
+        }
+
+        public void AddKeywords(IEnumerable<CardKeyword> keywords)
+        {
+            if (keywords == null)
+                return;
+
+            foreach (var k in keywords)
+                _baseKeywords.Add(k);
+        }
+
+        public void SetRaceKeywords(IEnumerable<CardKeyword> keywords)
+        {
+            _raceKeywords.Clear();
+            if (keywords == null)
+                return;
+
+            foreach (var k in keywords)
+                _raceKeywords.Add(k);
+        }
+
+        public bool HasKeyword(CardKeyword keyword) => _baseKeywords.Contains(keyword) || _raceKeywords.Contains(keyword);
+
+        public bool IsRace(TroopRaces race) => HasRace && Race == race;
 
         public void ApplyDamage(int amount)
         {
@@ -100,6 +146,13 @@ namespace Assets.Scripts.CardEngine.Cards
 		public SpellBehavior(Card card) : base(card) { }
 		public override string Name => "Spell";
 		public override CardType Category => CardType.Spell;
+
+        public SpellSchool School { get; private set; } = SpellSchool.None;
+
+        public void SetSchool(SpellSchool school)
+        {
+            School = school;
+        }
 
         public override void AfterPlayed(EffectContext context, ICardZone sourceZone)
         {

@@ -1,6 +1,7 @@
 using System;
 using Assets.Scripts.CardEngine.Cards;
 using Assets.Scripts.CardEngine.Game;
+using Assets.Scripts.CardEngine.Utils;
 
 namespace Assets.Scripts.CardEngine.Board
 {
@@ -12,7 +13,7 @@ namespace Assets.Scripts.CardEngine.Board
 
         public event Action<Card> OnCardAssigned;
         public event Action OnCardRemoved;
-        public string ZoneName => $"PlayAreaZone_{ZoneIndex}";
+        public string ZoneName => $"{ZoneNames.PlayAreaZonePrefix}{ZoneIndex}";
 
         public bool TryOccupy(Card card)
         {

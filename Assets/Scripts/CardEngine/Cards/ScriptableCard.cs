@@ -2,6 +2,8 @@ using UnityEngine;
 using Assets.Scripts.CardEngine.Effects;
 using Assets.Scripts.CardEngine.Game;
 using System.Collections.Generic;
+using Assets.Scripts.CardEngine.Keywords;
+using Assets.Scripts.CardEngine.Rules;
 
 namespace Assets.Scripts.CardEngine.Cards
 {
@@ -20,6 +22,10 @@ namespace Assets.Scripts.CardEngine.Cards
         [Header("Gameplay")]
         public CardType category = CardType.Troop;
 
+        [Header("Tags / Archetype")]
+        [Tooltip("Optional tags (case-insensitive). Use these for archetypes like 'Dragon', 'Necromancy', etc.")]
+        public List<string> tags = new();
+
         [Min(0)]
         public int deployCost = 1;
 
@@ -32,8 +38,23 @@ namespace Assets.Scripts.CardEngine.Cards
         [Min(1)]
         public int health = 1;
 
-        [SerializeReference]
-        public EffectDefinition onPlayEffect;
+        [Header("Troop Race")]
+        [Tooltip("Optional. Only used when category = Troop. Use None for no race.")]
+        public TroopRaces race = TroopRaces.None;
+
+
+        [Header("Troop Keywords")]
+        [Tooltip("Optional. Only used when category = Troop.")]
+        public List<CardKeyword> keywords = new();
+
+        [Header("Spell School")]
+        [Tooltip("Only used when category = Spell.")]
+        public SpellSchool spellSchool = SpellSchool.None;
+
+        [Header("Triggered Effects")]
+        [Tooltip("Generic triggered effects (e.g., WhenThisIsPlayed). Optional.")]
+        [SerializeField]
+        public List<TriggeredEffectDefinition> triggeredEffects = new();
 
         [Header("Rapid Effects")]
         [Tooltip("Optional fast/response effects that can be activated during chain windows.")]
@@ -68,6 +89,10 @@ namespace Assets.Scripts.CardEngine.Cards
 
             troop.DeployCost = deployCost;
             troop.InitializeStats(power, health);
+
+            troop.SetRace(race);
+            var raceKeywords = race == TroopRaces.None ? null : RaceRegistry.GetGrantedKeywords(race);
+            troop.SetKeywords(keywords, raceKeywords);
         }
 
         private void ConfigureRitualStages(Card card)
@@ -111,17 +136,15 @@ namespace Assets.Scripts.CardEngine.Cards
             if (rapid?.InnerEffect == null)
                 return true;
 
-            IRapidEffectCondition stageGate = new AndRapidEffectCondition(
-                new RitualStageEqualsRapidCondition(stageIndex),
-                new RitualNotAdvancedThisTurnRapidCondition());
+            var combinedConditions = new List<IRapidEffectCondition>();
+            if (rapid.Conditions != null)
+                combinedConditions.AddRange(rapid.Conditions);
 
-            stageGate = new AndRapidEffectCondition(stageGate, new RitualMustBeInPlayRapidCondition());
+            combinedConditions.Add(new RitualStageEqualsRapidCondition(stageIndex));
+            combinedConditions.Add(new RitualNotAdvancedThisTurnRapidCondition());
+            combinedConditions.Add(new RitualMustBeInPlayRapidCondition());
 
-            IRapidEffectCondition combined = rapid.Condition != null
-                ? new AndRapidEffectCondition(rapid.Condition, stageGate)
-                : stageGate;
-
-            card?.RapidEffects?.Add(new RapidEffect(rapid.InnerEffect, combined));
+            card?.RapidEffects?.Add(new RapidEffect(rapid.InnerEffect, combinedConditions, rapid.ActivationFrequency));
             return true;
         }
 
@@ -129,7 +152,6 @@ namespace Assets.Scripts.CardEngine.Cards
         {
             protected override void ResolveCore(EffectContext effectContext)
             {
-                // Intentionally empty: used to reserve a ritual stage slot.
             }
         }
 
@@ -153,7 +175,6 @@ namespace Assets.Scripts.CardEngine.Cards
 
             string runtimeId = string.IsNullOrWhiteSpace(id) ? name : id;
             string runtimeName = string.IsNullOrWhiteSpace(cardName) ? name : cardName;
-            Effect runtimeEffect = onPlayEffect != null ? onPlayEffect.CreateRuntimeEffect() : null;
 
             var card = new Card(
                 id: runtimeId,
@@ -161,9 +182,23 @@ namespace Assets.Scripts.CardEngine.Cards
                 owner: owner,
                 name: runtimeName,
                 effectText: effectText ?? string.Empty,
-                effect: runtimeEffect,
-                gameState: gameState
+                gameState: gameState,
+                tags: tags
             );
+
+            if (triggeredEffects != null)
+            {
+                for (int i = 0; i < triggeredEffects.Count; i++)
+                {
+                    var def = triggeredEffects[i];
+                    var runtime = def != null ? def.CreateRuntimeTriggeredEffect() : null;
+                    if (runtime != null)
+                        card.TriggeredEffects.Add(runtime);
+                }
+            }
+
+            if (card.Behavior is SpellBehavior spell)
+                spell.SetSchool(spellSchool);
 
             AddRapidEffectsTo(card);
             ConfigureTroopStats(card);

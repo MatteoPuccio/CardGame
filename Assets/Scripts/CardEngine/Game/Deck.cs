@@ -16,7 +16,7 @@ namespace Assets.Scripts.CardEngine.Game
         public GameState GameState => _gameState;
         public event Action<Card> CardAdded;
         public event Action<Card> CardRemoved;
-        public string ZoneName => "Deck";
+        public string ZoneName => ZoneNames.Deck;
 
         public Deck(Player owner, GameState gameState, List<Card> cards = null)
         {
@@ -55,10 +55,13 @@ namespace Assets.Scripts.CardEngine.Game
 
         public void Clear()
         {
-            foreach (var card in _cards.Cards)
+            // Copy to avoid mutating while iterating.
+            var snapshot = new List<Card>(_cards.Cards);
+            foreach (var card in snapshot)
             {
-                _cards.TakeCard(card);
-                CardRemoved?.Invoke(card);
+                bool removed = _cards.TakeCard(card);
+                if (removed)
+                    CardRemoved?.Invoke(card);
             }
         }
 

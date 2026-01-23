@@ -1,3 +1,4 @@
+using Assets.Scripts.CardEngine.Effects;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -45,6 +46,8 @@ namespace Assets.Editor
     {
         protected abstract Type BaseType { get; }
 
+        protected virtual void EnsureDefaultInstance(SerializedProperty property) { }
+
         public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
         {
             // One line for the type picker + the children (if any).
@@ -62,6 +65,8 @@ namespace Assets.Editor
         public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
         {
             EditorGUI.BeginProperty(position, label, property);
+
+            EnsureDefaultInstance(property);
 
             Rect line = new(position.x, position.y, position.width, EditorGUIUtility.singleLineHeight);
 
@@ -123,27 +128,63 @@ namespace Assets.Editor
 
     // Drawers for your specific base types
 
-    [CustomPropertyDrawer(typeof(Assets.Scripts.CardEngine.Effects.EffectDefinition), true)]
+    [CustomPropertyDrawer(typeof(EffectDefinition), true)]
     internal sealed class EffectDefinitionTypePickerDrawer : SerializeReferenceTypePickerDrawerBase
     {
-        protected override Type BaseType => typeof(Assets.Scripts.CardEngine.Effects.EffectDefinition);
+        protected override Type BaseType => typeof(EffectDefinition);
     }
 
-    [CustomPropertyDrawer(typeof(Assets.Scripts.CardEngine.Effects.EffectSelectorDefinition), true)]
+    [CustomPropertyDrawer(typeof(EffectSelectorDefinition), true)]
     internal sealed class EffectSelectorDefinitionTypePickerDrawer : SerializeReferenceTypePickerDrawerBase
     {
-        protected override Type BaseType => typeof(Assets.Scripts.CardEngine.Effects.EffectSelectorDefinition);
+        protected override Type BaseType => typeof(EffectSelectorDefinition);
     }
 
-    [CustomPropertyDrawer(typeof(Assets.Scripts.CardEngine.Effects.RapidEffectDefinition), true)]
+    [CustomPropertyDrawer(typeof(RapidEffectDefinition), true)]
     internal sealed class RapidEffectDefinitionTypePickerDrawer : SerializeReferenceTypePickerDrawerBase
     {
-        protected override Type BaseType => typeof(Assets.Scripts.CardEngine.Effects.RapidEffectDefinition);
+        protected override Type BaseType => typeof(RapidEffectDefinition);
     }
 
-    [CustomPropertyDrawer(typeof(Assets.Scripts.CardEngine.Effects.RapidEffectConditionDefinition), true)]
+    [CustomPropertyDrawer(typeof(RapidEffectConditionDefinition), true)]
     internal sealed class RapidEffectConditionDefinitionTypePickerDrawer : SerializeReferenceTypePickerDrawerBase
     {
-        protected override Type BaseType => typeof(Assets.Scripts.CardEngine.Effects.RapidEffectConditionDefinition);
+        protected override Type BaseType => typeof(RapidEffectConditionDefinition);
+    }
+
+    [CustomPropertyDrawer(typeof(CardFilterDefinition), true)]
+    internal sealed class CardFilterDefinitionTypePickerDrawer : SerializeReferenceTypePickerDrawerBase
+    {
+        protected override Type BaseType => typeof(CardFilterDefinition);
+    }
+
+    [CustomPropertyDrawer(typeof(TutorResultActionDefinition), true)]
+    internal sealed class TutorResultActionDefinitionTypePickerDrawer : SerializeReferenceTypePickerDrawerBase
+    {
+        protected override Type BaseType => typeof(TutorResultActionDefinition);
+    }
+
+    [CustomPropertyDrawer(typeof(TriggeredEffectConditionDefinition), true)]
+    internal sealed class TriggeredEffectConditionDefinitionTypePickerDrawer : SerializeReferenceTypePickerDrawerBase
+    {
+        protected override Type BaseType => typeof(TriggeredEffectConditionDefinition);
+    }
+
+    [CustomPropertyDrawer(typeof(AmountDefinition), true)]
+    internal sealed class AmountDefinitionTypePickerDrawer : SerializeReferenceTypePickerDrawerBase
+    {
+        protected override Type BaseType => typeof(AmountDefinition);
+
+        protected override void EnsureDefaultInstance(SerializedProperty property)
+        {
+            if (property == null)
+                return;
+
+            if (property.managedReferenceValue != null)
+                return;
+
+            property.managedReferenceValue = new ConstantAmountDefinition { Value = 0 };
+            property.serializedObject.ApplyModifiedProperties();
+        }
     }
 }

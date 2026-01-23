@@ -1,7 +1,7 @@
 using Assets.Scripts.CardEngine.Cards;
-using Assets.Scripts.CardEngine.Effects;
 using Assets.Scripts.CardEngine.Game;
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Assets.Scripts.CardEngine.Effects

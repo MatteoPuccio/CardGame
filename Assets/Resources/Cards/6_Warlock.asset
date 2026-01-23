@@ -62,4 +62,4 @@ MonoBehaviour:
     - rid: 4283266804966228045
       type: {class: ConstantAmountDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data:
-        Value: 0
+        Value: 1

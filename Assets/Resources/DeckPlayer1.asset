@@ -23,7 +23,7 @@ MonoBehaviour:
     _count: 2
   - _card: {fileID: 11400000, guid: aff9fe1f9301c4a4597db7bc48e3d61a, type: 2}
     _count: 2
-  - _card: {fileID: 11400000, guid: 5e765f036a2e23a46a69196099868c42, type: 2}
+  - _card: {fileID: 11400000, guid: f7bc9a384d712104e9cf2e94c4d9cf04, type: 2}
     _count: 2
   - _card: {fileID: 11400000, guid: d1e35b77f1777274c856739eb6d2aa86, type: 2}
     _count: 2

@@ -16,29 +16,37 @@ MonoBehaviour:
   cardName: Bedrock Collapse
   effectText: 'Play: Destroy all enemy troops.'
   category: 1
+  tags: []
   deployCost: 1
   power: 0
   health: 1
   race: -1
   keywords: 
   spellSchool: 1
-  onPlayEffect:
-    rid: 4283266491973894457
+  triggeredEffects:
+  - optional: 0
+    effect:
+      rid: 4283266828517507073
+    condition:
+      rid: 4283266828517507072
   rapidEffects: []
   ritualStageEffects: []
   references:
     version: 2
     RefIds:
-    - rid: 4283266491973894457
+    - rid: 4283266828517507072
+      type: {class: WhenThisIsPlayedConditionDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data: 
+    - rid: 4283266828517507073
       type: {class: TargetedEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data:
         _selector:
-          rid: 4283266491973894458
+          rid: 4283266828517507074
         _effect:
-          rid: 4283266491973894487
-    - rid: 4283266491973894458
+          rid: 4283266828517507076
+    - rid: 4283266828517507074
       type: {class: AllEnemyCharactersSelectorDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data: 
-    - rid: 4283266491973894487
+    - rid: 4283266828517507076
       type: {class: DestroyEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data: 

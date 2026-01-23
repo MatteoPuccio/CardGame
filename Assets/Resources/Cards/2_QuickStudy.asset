@@ -16,38 +16,49 @@ MonoBehaviour:
   cardName: Quick Study
   effectText: 'Play: Draw 1 card.'
   category: 1
+  tags: []
   deployCost: 1
   power: 0
   health: 1
   race: -1
   keywords: 
   spellSchool: 6
-  triggeredEffects: []
+  triggeredEffects:
+  - optional: 0
+    effect:
+      rid: 4283266828517507169
+    condition:
+      rid: 4283266828517507168
   rapidEffects:
   - rid: 4283266804966228053
   ritualStageEffects: []
   references:
     version: 2
     RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
     - rid: 4283266804966228053
       type: {class: WrappedRapidEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data:
         activationFrequency: 1
         optional: 1
         effect:
-          rid: 4283266804966228056
+          rid: -2
         conditions:
         - rid: 4283266804966228054
     - rid: 4283266804966228054
       type: {class: AlwaysRapidConditionDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data: 
-    - rid: 4283266804966228056
+    - rid: 4283266828517507168
+      type: {class: WhenThisIsPlayedConditionDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data: 
+    - rid: 4283266828517507169
       type: {class: DrawEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data:
         _drawNumber: 1
         _drawAmountDynamic:
-          rid: 4283266804966228057
-    - rid: 4283266804966228057
+          rid: 4283266828517507170
+    - rid: 4283266828517507170
       type: {class: ConstantAmountDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data:
         Value: 1

@@ -62,13 +62,8 @@ namespace Assets.Scripts.CardEngine.Effects
     {
         public enum PlayerSelection
         {
-            [InspectorName("Card Owner")]
             Self,
-
-            [InspectorName("Opponent of Card Owner")]
             Opponent,
-
-            [InspectorName("Either (Owner or Opponent)")]
             Any,
         }
 
@@ -101,7 +96,6 @@ namespace Assets.Scripts.CardEngine.Effects
     [Serializable]
     public sealed class PlayerSelectorDefinition : EffectSelectorDefinition
     {
-        [Tooltip("Selection is relative to the Source card's Owner (card owner/controller), not a local-player concept.")]
         [SerializeField] private PlayerSelector.PlayerSelection _selection = PlayerSelector.PlayerSelection.Self;
         public override IEffectSelector CreateRuntimeSelector() => new PlayerSelector(_selection);
     }

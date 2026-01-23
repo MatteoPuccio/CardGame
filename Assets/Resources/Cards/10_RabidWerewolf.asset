@@ -14,45 +14,59 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.CardEngine.Cards.ScriptableCard
   id: 10
   cardName: Rabid Werewolf
-  effectText: 'Play: Target 1 troop to deal 2 damage to it and change its race to
-    Beast.'
+  effectText: 'Play: Can target 1 troop to deal 2 damage to it and change its race
+    to Beast.'
   category: 0
+  tags: []
   deployCost: 1
   power: 2
   health: 1
   race: 3
   keywords: 
   spellSchool: 0
-  onPlayEffect:
-    rid: 4283266764038996040
+  triggeredEffects:
+  - optional: 1
+    effect:
+      rid: 4283266828517507081
+    condition:
+      rid: 4283266828517507080
   rapidEffects: []
   ritualStageEffects: []
   references:
     version: 2
     RefIds:
-    - rid: 4283266764038996040
+    - rid: 4283266828517507080
+      type: {class: WhenThisIsPlayedConditionDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data: 
+    - rid: 4283266828517507081
       type: {class: TargetedEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data:
         _selector:
-          rid: 4283266764038996042
+          rid: 4283266828517507082
         _effect:
-          rid: 4283266764038996043
-    - rid: 4283266764038996042
+          rid: 4283266828517507083
+    - rid: 4283266828517507082
       type: {class: SingleCardInPlaySelectorDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data:
         _mustBeOwnedBySourceOwner: 0
         _mustBeType: 0
-    - rid: 4283266764038996043
+    - rid: 4283266828517507083
       type: {class: SequentialEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data:
         _effects:
-        - rid: 4283266764038996046
-        - rid: 4283266764038996047
-    - rid: 4283266764038996046
+        - rid: 4283266828517507085
+        - rid: 4283266828517507087
+    - rid: 4283266828517507085
       type: {class: DamageTroopEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data:
         DamageAmount: 2
-    - rid: 4283266764038996047
+        DamageAmountDynamic:
+          rid: 4283266828517507086
+    - rid: 4283266828517507086
+      type: {class: ConstantAmountDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        Value: 1
+    - rid: 4283266828517507087
       type: {class: ChangeRaceEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data:
         NewRace: 3

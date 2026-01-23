@@ -16,6 +16,7 @@ MonoBehaviour:
   cardName: Draconic Bookkeeper
   effectText: 'Play: You can draw 1 card.'
   category: 0
+  tags: []
   deployCost: 2
   power: 3
   health: 4
@@ -45,4 +46,4 @@ MonoBehaviour:
     - rid: 4283266804966228058
       type: {class: ConstantAmountDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data:
-        Value: 0
+        Value: 1

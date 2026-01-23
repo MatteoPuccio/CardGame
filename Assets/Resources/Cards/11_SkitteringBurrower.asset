@@ -14,7 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.CardEngine.Cards.ScriptableCard
   id: 11
   cardName: Skittering Burrower
-  effectText: 'Play: During the End Phase, add a "Skittering" card from your Cemetery.'
+  effectText: During the End Phase, chose 1 "Skittering" card to add to your Hand
+    from your Cemetery.
   category: 0
   tags:
   - Skittering

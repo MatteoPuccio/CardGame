@@ -16,6 +16,7 @@ MonoBehaviour:
   cardName: Betrayal
   effectText: 'Play: Select and destroy a friendly troop, draw 2 cards.'
   category: 1
+  tags: []
   deployCost: 1
   power: 0
   health: 1
@@ -66,4 +67,4 @@ MonoBehaviour:
     - rid: 4283266804966228066
       type: {class: ConstantAmountDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
       data:
-        Value: 0
+        Value: 1

@@ -135,6 +135,26 @@ namespace Assets.Scripts.CardEngine.Cards
         }
 
 
+        public void ModifyStats(int powerDelta, int maxHealthDelta, bool healAddedHealth = true)
+        {
+            // Power is clamped at 0.
+            Power = Math.Max(0, Power + powerDelta);
+
+            // Max health is clamped at 1.
+            int newMax = Math.Max(1, MaxHealth + maxHealthDelta);
+            int deltaApplied = newMax - MaxHealth;
+            MaxHealth = newMax;
+
+            // If we increased max health, optionally also increase current health by the gained amount.
+            if (healAddedHealth && deltaApplied > 0)
+                Health += deltaApplied;
+
+            // Always clamp current health to the new max.
+            Health = Math.Max(0, Math.Min(MaxHealth, Health));
+            OnStatsChanged?.Invoke(this);
+        }
+
+
         public override void AfterPlayed(EffectContext context, ICardZone sourceZone)
         {
 

@@ -16,8 +16,8 @@ MonoBehaviour:
   cardName: Skittering Goliath
   effectText: 'Play: Refund 1 Deploy Point for every "Skittering" troop on the field.
 
-    (TODO:
-    Play from hand) Death: Play 1 "Skittering" troop from your hand.'
+    Death:
+    Play 1 "Skittering" troop from your hand.'
   category: 0
   tags:
   - Skittering

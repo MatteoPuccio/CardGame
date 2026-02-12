@@ -87,18 +87,25 @@ namespace Assets.Scripts.CardEngine.Game
 			if (card == null)
 				return;
 
-			// Reuse an existing view if it was already created elsewhere.
+			// Always destroy any existing view so we get a fresh visible-prefab instance.
+			// This guarantees the hidden extra-deck prefab is replaced, regardless of
+			// timing with deferred Destroy or registry state.
 			if (GameController?.CardViewRegistry != null && GameController.CardViewRegistry.TryGet(card, out var existingView))
 			{
-				_bindings[card] = existingView;
-				AddToAssignedView(card, existingView);
-				return;
+				Debug.Log($"RitualZoneController: Destroying existing view for {card.Name} (IsHidden={existingView.IsHidden}) to create fresh visible one.");
+				GameController.CardViewRegistry.Unregister(card);
+				_bindings.Remove(card);
+				DestroyImmediate(existingView.gameObject);
 			}
 
 			var view = _cardFactory.CreateCard(card, _ritualZone?.GameState, GameController?.CardViewRegistry);
 			if (view == null)
+			{
+				Debug.LogError($"RitualZoneController: CardFactory.CreateCard returned null for {card.Name}.");
 				return;
+			}
 
+			Debug.Log($"RitualZoneController: Created visible view for {card.Name} (IsHidden={view.IsHidden}, prefab used in factory log above).");
 			_bindings[card] = view;
 			AddToAssignedView(card, view);
 		}

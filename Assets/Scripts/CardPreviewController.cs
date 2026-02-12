@@ -13,17 +13,6 @@ namespace Assets.Scripts
 		[SerializeField, Min(0.1f)] private float _previewScale = 3.0f;
 
 		private GameObject _currentPreview;
-		private int _lastShowFrame = -1;
-
-		private void OnEnable()
-		{
-			UIController.GlobalLeftClick += OnGlobalLeftClick;
-		}
-
-		private void OnDisable()
-		{
-			UIController.GlobalLeftClick -= OnGlobalLeftClick;
-		}
 
 		private void Awake()
 		{
@@ -41,19 +30,6 @@ namespace Assets.Scripts
 				Debug.LogError("CardPreviewController: _previewParent is not assigned.");
 				enabled = false;
 			}
-		}
-
-		private void OnGlobalLeftClick(Vector2 screenPos)
-		{
-			if (_currentPreview == null)
-				return;
-			if (Time.frameCount == _lastShowFrame)
-				return;
-
-			if (RectTransformUtility.RectangleContainsScreenPoint(_previewParent, screenPos, null))
-				return;
-
-			Clear();
 		}
 
 		private void OnDestroy()
@@ -95,7 +71,6 @@ namespace Assets.Scripts
 			_currentPreview = Instantiate(prefab, _previewParent);
 			_currentPreview.name = $"CardPreview_{card.Name}";
 			_currentPreview.SetActive(true);
-			_lastShowFrame = Time.frameCount;
 
 			var rt = _currentPreview.GetComponent<RectTransform>();
 			if (rt != null)

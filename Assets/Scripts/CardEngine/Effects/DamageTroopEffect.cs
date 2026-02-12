@@ -22,7 +22,7 @@ namespace Assets.Scripts.CardEngine.Effects
             if (!base.CanActivate(context, out reason))
                 return false;
 
-            if (context?.Targets == null || context.Targets.Count == 0)
+            if (context.Targets.Count == 0)
             {
                 reason = "Missing troop target.";
                 return false;

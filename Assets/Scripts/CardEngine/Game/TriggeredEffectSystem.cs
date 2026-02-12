@@ -152,60 +152,73 @@ namespace Assets.Scripts.CardEngine.Game
             if (card == null || triggeringEvent == null || matchingEffects == null || matchingEffects.Count == 0)
                 return;
 
-            var owner = card.Owner;
-
-            IReadOnlyList<Effect> ordered = matchingEffects;
-            if (OptionalEffectPrompting.HasAnyOptional(matchingEffects))
-            {
-                try
-                {
-                    var overrideList = await OptionalEffectPrompting.BuildOverrideAsync(_gameState, owner, card, matchingEffects);
-                    if (overrideList != null)
-                        ordered = overrideList;
-                    else
-                        ordered = matchingEffects.Where(e => e != null && !e.IsOptional).ToList();
-                }
-                catch
-                {
-                    // If optional prompting fails, treat as declining optional effects.
-                    ordered = matchingEffects.Where(e => e != null && !e.IsOptional).ToList();
-                }
-            }
-
+            var ordered = await ResolveOrderedEffectsAsync(card, matchingEffects);
             if (ordered == null || ordered.Count == 0)
                 return;
 
-            Effect root = ordered.Count == 1 ? ordered[0] : new SequentialEffect(ordered.ToList());
-
-            var ctx = new EffectContext
-            {
-                Source = card,
-                GameState = _gameState,
-                Targets = null,
-                TriggeringEvent = triggeringEvent,
-            };
-
+            var root = BuildRootEffect(ordered);
+            var ctx = CreateTriggeredContext(card, triggeringEvent);
             var tcs = new TaskCompletionSource<bool>();
-            void Finished(bool success, string cancelReason) => tcs.TrySetResult(success);
+            var session = new TriggeredEffectSession(card, root, ctx, (success, cancelReason) => tcs.TrySetResult(success));
+            BeginTargetingIfNeeded(session);
+            await AwaitCompletionAsync(tcs.Task);
+        }
 
-            var session = new TriggeredEffectSession(card, root, ctx, Finished);
+        private async Task<IReadOnlyList<Effect>> ResolveOrderedEffectsAsync(Card card, List<Effect> matchingEffects)
+        {
+            if (matchingEffects == null || matchingEffects.Count == 0)
+                return matchingEffects;
+
+            if (!OptionalEffectPrompting.HasAnyOptional(matchingEffects))
+                return matchingEffects;
+
+            try
+            {
+                var overrideList = await OptionalEffectPrompting.BuildOverrideAsync(_gameState, card.Owner, card, matchingEffects);
+                return overrideList ?? FilterOutOptional(matchingEffects);
+            }
+            catch
+            {
+                // If optional prompting fails, treat as declining optional effects.
+                return FilterOutOptional(matchingEffects);
+            }
+        }
+
+        private static IReadOnlyList<Effect> FilterOutOptional(IEnumerable<Effect> effects) =>
+            effects.Where(e => e != null && !e.IsOptional).ToList();
+
+        private static Effect BuildRootEffect(IReadOnlyList<Effect> ordered) =>
+            ordered.Count == 1 ? ordered[0] : new SequentialEffect(ordered.ToList());
+
+        private EffectContext CreateTriggeredContext(Card card, IGameEvent triggeringEvent) =>
+            new(
+                source: card,
+                gameState: _gameState,
+                targets: null,
+                triggeringEvent: triggeringEvent);
+
+        private void BeginTargetingIfNeeded(TriggeredEffectSession session)
+        {
+            if (session == null)
+                return;
 
             if (session.TryAdvance(out var candidates) && candidates != null && candidates.Count > 0)
                 _gameState.Targeting.Begin(session, candidates);
+        }
+
+        private static async Task AwaitCompletionAsync(Task completion)
+        {
+            if (completion == null)
+                return;
 
             // Await completion to keep triggered effects sequenced.
             try
             {
-                var completed = await Task.WhenAny(tcs.Task, Task.Delay(5000));
-                if (completed != tcs.Task)
-                {
-                    // Timeout: don't permanently block later triggers.
-                    tcs.TrySetResult(false);
-                }
-                else
-                {
-                    await tcs.Task;
-                }
+                var completed = await Task.WhenAny(completion, Task.Delay(5000));
+                if (completed != completion)
+                    return; // Timeout: don't permanently block later triggers.
+
+                await completion;
             }
             catch
             {

@@ -13,15 +13,47 @@ namespace Assets.Scripts.CardEngine.Effects
         OncePerTurn = 1,
     }
 
+    /// <summary>
+    /// Immutable context for rapid effect activation, extending EffectContext
+    /// with rapid-specific properties.
+    /// </summary>
     public sealed class RapidEffectContext : EffectContext
     {
-        public Player Activator { get; set; }
+        public Player Activator { get; }
 
         /// <summary>
         /// Optional helper: if this rapid effect is being activated in response to something,
         /// this is the effect/event that opened the window.
         /// </summary>
-        public object ChainWindowSource { get; set; }
+        public object ChainWindowSource { get; }
+
+        public RapidEffectContext(
+            Card source,
+            GameState gameState,
+            Player activator,
+            IReadOnlyList<ITargetable> targets = null,
+            IGameEvent triggeringEvent = null,
+            object chainWindowSource = null)
+            : base(source, gameState, targets, triggeringEvent)
+        {
+            Activator = activator;
+            ChainWindowSource = chainWindowSource;
+        }
+
+        public override EffectContext WithTargets(IReadOnlyList<ITargetable> newTargets)
+            => new RapidEffectContext(Source, GameState, Activator, newTargets, TriggeringEvent, ChainWindowSource);
+
+        public override EffectContext WithSource(Card newSource)
+            => new RapidEffectContext(newSource, GameState, Activator, Targets, TriggeringEvent, ChainWindowSource);
+
+        public override EffectContext WithTriggeringEvent(IGameEvent newEvent)
+            => new RapidEffectContext(Source, GameState, Activator, Targets, newEvent, ChainWindowSource);
+
+        public RapidEffectContext WithActivator(Player newActivator)
+            => new(Source, GameState, newActivator, Targets, TriggeringEvent, ChainWindowSource);
+
+        public RapidEffectContext WithChainWindowSource(object newChainWindowSource)
+            => new(Source, GameState, Activator, Targets, TriggeringEvent, newChainWindowSource);
     }
 
     [Serializable]

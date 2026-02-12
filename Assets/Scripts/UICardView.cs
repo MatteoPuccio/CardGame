@@ -20,7 +20,7 @@ namespace Assets.Scripts
 		bool HandleClick(UICardView view, PointerEventData eventData);
 	}
 
-	public class UICardView : MonoBehaviour, IPointerClickHandler
+	public class UICardView : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 	{
 		[SerializeField] private TMP_Text _nameText;
 		[SerializeField] private TMP_Text _effectText;
@@ -166,9 +166,28 @@ namespace Assets.Scripts
 				return;
 			if (QuickPlayFromHand())
 				return;
+			if (QuickPlayFromExtraDeck())
+				return;
+
+			ShiftClickMoveCemeteryToDeck();
+		}
+
+		public void OnPointerEnter(PointerEventData eventData)
+		{
+			if (CardData == null)
+				return;
+			if (IsInPreview())
+				return;
 
 			CardPreviewController.Show(CardData);
-			ShiftClickMoveCemeteryToDeck();
+		}
+
+		public void OnPointerExit(PointerEventData eventData)
+		{
+			if (IsInPreview())
+				return;
+
+			CardPreviewController.ClearPreview();
 		}
 
 		private bool TryHandleRaceTagClick(PointerEventData eventData)
@@ -229,6 +248,25 @@ namespace Assets.Scripts
 			return true;
 		}
 
+		private bool QuickPlayFromExtraDeck()
+		{
+			if (!TryGetQuickPlayExtraDeckContext(out var gs, out var extraDeck))
+				return false;
+
+			var playEffects = GetPlayTriggeredEffects(CardData);
+			if (OptionalEffectPrompting.HasAnyOptional(playEffects))
+			{
+				_ = QuickPlayFromHandAsync(gs, extraDeck, playEffects);
+				return true;
+			}
+
+			if (!CardData.TryBeginPlay(extraDeck, playEffectsOverride: null, out var session, out var candidates))
+				return false;
+			if (candidates != null && candidates.Count > 0)
+				gs.Targeting.Begin(session, candidates);
+			return true;
+		}
+
 		private bool TryGetQuickPlayContext(out GameState gameState, out ICardZone hand)
 		{
 			gameState = null;
@@ -253,6 +291,31 @@ namespace Assets.Scripts
 
 			gameState = gs;
 			hand = owner.Hand;
+			return true;
+		}
+
+		private bool TryGetQuickPlayExtraDeckContext(out GameState gameState, out ICardZone extraDeck)
+		{
+			gameState = null;
+			extraDeck = null;
+
+			if (CardData == null)
+				return false;
+
+			var gs = CardData.GameState;
+			var owner = CardData.Owner;
+			if (gs == null || owner?.ExtraDeck == null)
+				return false;
+			if (!owner.ExtraDeck.Contains(CardData))
+				return false;
+
+			// Only allow click-play for non-board cards from UI lists.
+			bool isBoardCard = CardData.Behavior != null && CardData.Behavior.RequiresPlayZone;
+			if (isBoardCard)
+				return false;
+
+			gameState = gs;
+			extraDeck = owner.ExtraDeck;
 			return true;
 		}
 

@@ -1,6 +1,7 @@
 using UnityEngine;
 using Assets.Scripts.CardEngine.Board;
 using Assets.Scripts.CardEngine.Game;
+using Assets.Scripts.CardEngine.Cards.Views;
 using TMPro;
 
 namespace Assets.Scripts.CardEngine.Cards
@@ -8,6 +9,13 @@ namespace Assets.Scripts.CardEngine.Cards
     public class CardView : MonoBehaviour
     {
         public Card CardData;
+
+        public bool IsHidden { get; private set; }
+
+        public void SetHidden(bool hidden)
+        {
+            IsHidden = hidden;
+        }
 
         [Header("Movement")]
         public float dragHeightOffset = 0.5f;
@@ -74,14 +82,43 @@ namespace Assets.Scripts.CardEngine.Cards
             if (TryHandleRaceTagClick())
                 return;
 
-            CardPreviewController.Show(CardData);
             _state?.OnMouseDown(this);
         }
         void OnMouseDrag() => _state?.OnMouseDrag(this);
         void OnMouseUp()   => _state?.OnMouseUp(this);
 
+        void OnMouseEnter()
+        {
+            if (IsHidden)
+                return;
+            if (CardData != null)
+                CardPreviewController.Show(CardData);
+        }
+
+        void OnMouseExit()
+        {
+            CardPreviewController.ClearPreview();
+        }
+
         public void ApplyDeployCostStars(int deployCost, Material baseMaterial, Material filledMaterial)
         {
+            if (CardData == null)
+                return;
+
+            // Option C: visuals are composed via optional components.
+            // If this view has a dedicated stars sub-view, use it.
+            var starsView = GetComponent<DeployCostStars3DView>();
+            if (starsView != null)
+            {
+                if (CardData.Category == CardType.Troop)
+                    starsView.Apply(deployCost, baseMaterial, filledMaterial);
+                return;
+            }
+
+            // Legacy fallback: only attempt if any renderer is actually configured.
+            if (_oneStar == null && _twoStar == null && _threeStar == null)
+                return;
+
             if(CardData.Category == CardType.Troop) {
                 ApplyStar(_oneStar, deployCost >= 1, baseMaterial, filledMaterial);
                 ApplyStar(_twoStar, deployCost >= 2, baseMaterial, filledMaterial);
@@ -91,6 +128,9 @@ namespace Assets.Scripts.CardEngine.Cards
 
         private static void ApplyStar(Renderer renderer, bool filled, Material baseMaterial, Material filledMaterial)
         {
+            if (renderer == null)
+                return;
+
             renderer.material = filled ?
                 filledMaterial :
                 baseMaterial;

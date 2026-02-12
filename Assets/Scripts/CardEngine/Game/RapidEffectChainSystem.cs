@@ -336,15 +336,14 @@ namespace Assets.Scripts.CardEngine.Game
 
         private RapidEffectContext CreateRapidContext(Card source, Player activator, IGameEvent triggeringEvent)
         {
-            return new RapidEffectContext
-            {
-                Source = source,
-                GameState = _gameState,
-                Targets = new System.Collections.Generic.List<ITargetable>(),
-                TriggeringEvent = triggeringEvent,
-                Activator = activator,
-                ChainWindowSource = triggeringEvent,
-            };
+            return new RapidEffectContext(
+                source: source,
+                gameState: _gameState,
+                activator: activator,
+                targets: null,
+                triggeringEvent: triggeringEvent,
+                chainWindowSource: triggeringEvent
+            );
         }
 
         private static void Swap(ref Player a, ref Player b)

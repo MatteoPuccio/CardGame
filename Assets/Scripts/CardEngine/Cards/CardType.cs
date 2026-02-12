@@ -13,6 +13,7 @@ namespace Assets.Scripts.CardEngine.Cards
         Troop,
         Spell,
         Ritual,
+        Avatar,
         Champion,
         None
     }
@@ -43,9 +44,23 @@ namespace Assets.Scripts.CardEngine.Cards
                 CardType.Troop => new TroopBehavior(card),
                 CardType.Spell => new SpellBehavior(card),
                 CardType.Ritual => new RitualBehavior(card),
+                CardType.Avatar => new AvatarBehavior(card),
                 CardType.Champion => new ChampionBehavior(card),
                 _ => throw new ArgumentOutOfRangeException(nameof(category), category, "Unsupported card category")
             };
+        }
+    }
+
+    public sealed class AvatarBehavior : CardBehavior
+    {
+        public AvatarBehavior(Card card) : base(card) { }
+
+        public override string Name => "Avatar";
+        public override CardType Category => CardType.Avatar;
+
+        public override void AfterPlayed(EffectContext context, ICardZone sourceZone)
+        {
+            // Avatar rules are not implemented yet.
         }
     }
 
@@ -264,13 +279,12 @@ namespace Assets.Scripts.CardEngine.Cards
             if (stage is Effects.IPlaceholderEffect)
                 return;
 
-            var ctx = new EffectContext
-            {
-                Source = _card,
-                GameState = gs,
-                Targets = null,
-                TriggeringEvent = null,
-            };
+            var ctx = new EffectContext(
+                source: _card,
+                gameState: gs,
+                targets: null,
+                triggeringEvent: null
+            );
 
             void StageFinished(bool success, string cancelReason)
             {

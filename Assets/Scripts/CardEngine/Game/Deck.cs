@@ -12,6 +12,8 @@ namespace Assets.Scripts.CardEngine.Game
         private readonly GameState _gameState;
 
         public int CardCount => _cards.Count;
+        public IEnumerable<Card> Cards => _cards.Cards;
+
         public Player Owner => _owner;
         public GameState GameState => _gameState;
         public event Action<Card> CardAdded;

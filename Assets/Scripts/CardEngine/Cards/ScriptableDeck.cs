@@ -17,8 +17,23 @@ namespace Assets.Scripts.CardEngine.Cards
             public int Count => _count;
         }
 
-        [SerializeField] private List<Entry> _cards = new();
 
-        public IReadOnlyList<Entry> Cards => _cards;
+        [Header("Main Deck")]
+        [Tooltip("Cards in the main deck. Players draw from this deck.")]
+        [SerializeField] private List<Entry> _mainDeckCards = new();
+
+        [Header("Extra Deck")]
+        [Tooltip("Cards in the extra deck. Should contain only Ritual and Avatar cards.")]
+        [SerializeField] private List<Entry> _extraDeckCards = new();
+
+        /// <summary>
+        /// Entries explicitly configured for the main deck.
+        /// </summary>
+        public IReadOnlyList<Entry> MainDeckCards => _mainDeckCards;
+
+        /// <summary>
+        /// Entries explicitly configured for the extra deck.
+        /// </summary>
+        public IReadOnlyList<Entry> ExtraDeckCards => _extraDeckCards;
     }
 }

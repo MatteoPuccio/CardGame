@@ -67,6 +67,15 @@ namespace Assets.Scripts.CardEngine.Board
             if (GameController?.CardViewRegistry != null)
                 GameController.CardViewRegistry.TryGet(card, out cardView);
 
+            // Cards on the board must be visible. If the existing view was hidden
+            // (e.g. came from the extra deck), destroy it and create a fresh one.
+            if (cardView != null && cardView.IsHidden)
+            {
+                GameController.CardViewRegistry.Unregister(card);
+                DestroyImmediate(cardView.gameObject);
+                cardView = null;
+            }
+
             if (cardView == null)
                 cardView = _cardFactory.CreateCard(card, card.GameState, GameController?.CardViewRegistry);
 

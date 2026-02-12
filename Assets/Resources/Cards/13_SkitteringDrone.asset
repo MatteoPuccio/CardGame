@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.CardEngine.Cards.ScriptableCard
   id: 13
   cardName: Skittering Drone
-  effectText: '(TODO: Archetype selector, buff effect) Play: Give a "Skittering"
-    troop +1/+1 for every "Skittering" troop on the field.'
+  effectText: 'Play: You can give a "Skittering" troop +1/+1 for every "Skittering"
+    troop on the field.'
   category: 0
   tags:
   - Skittering
@@ -25,9 +25,51 @@ MonoBehaviour:
   race: 8
   keywords: 
   spellSchool: 0
-  triggeredEffects: []
+  triggeredEffects:
+  - optional: 1
+    effect:
+      rid: 4283266848184336456
+    condition:
+      rid: 4283266848184336455
   rapidEffects: []
   ritualStageEffects: []
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 4283266848184336455
+      type: {class: WhenThisIsPlayedConditionDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data: 
+    - rid: 4283266848184336456
+      type: {class: TargetedEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        _selector:
+          rid: 4283266848184336457
+        _effect:
+          rid: 4283266848184336458
+    - rid: 4283266848184336457
+      type: {class: SingleCardInPlaySelectorDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        _mustBeOwnedBySourceOwner: 0
+        _mustBeType: 0
+    - rid: 4283266848184336458
+      type: {class: BuffTroopEffectDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        PowerDelta: 1
+        PowerDeltaDynamic:
+          rid: 4283266848184336461
+        HealthDelta: 1
+        HealthDeltaDynamic:
+          rid: 4283266848184336462
+        HealAddedHealth: 1
+    - rid: 4283266848184336461
+      type: {class: CardsWithTagAmountDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        Tag: Skittering
+        Owner: 0
+        Zones: 16
+    - rid: 4283266848184336462
+      type: {class: CardsWithTagAmountDefinition, ns: Assets.Scripts.CardEngine.Effects, asm: Assembly-CSharp}
+      data:
+        Tag: Skittering
+        Owner: 0
+        Zones: 16

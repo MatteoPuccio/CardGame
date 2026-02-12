@@ -47,6 +47,8 @@ namespace Assets.Scripts
 
 		private Cemetery _localCemetery;
 		private Cemetery _opponentCemetery;
+		private ExtraDeck _localExtraDeck;
+		private ExtraDeck _opponentExtraDeck;
 
 		private void Awake()
 		{
@@ -56,6 +58,8 @@ namespace Assets.Scripts
 
 			var local = _gameController?.LocalCemeteryScrollRect;
 			var opponent = _gameController?.OpponentCemeteryScrollRect;
+			var localExtra = _gameController?.LocalExtraDeckScrollRect;
+			var opponentExtra = _gameController?.OpponentExtraDeckScrollRect;
 
 			if (local != null)
 			{
@@ -67,18 +71,32 @@ namespace Assets.Scripts
 				opponent.enabled = true;
 				opponent.gameObject.SetActive(false);
 			}
+			if (localExtra != null)
+			{
+				localExtra.enabled = true;
+				localExtra.gameObject.SetActive(false);
+			}
+			if (opponentExtra != null)
+			{
+				opponentExtra.enabled = true;
+				opponentExtra.gameObject.SetActive(false);
+			}
 		}
 
 		private void Start()
 		{
 			TryBindCemeteries();
+			TryBindExtraDecks();
 			RebuildAllCemeteryLists();
+			RebuildAllExtraDeckLists();
 		}
 
 		private void Update()
 		{
 			if (_localCemetery == null || _opponentCemetery == null)
 				TryBindCemeteries();
+			if (_localExtraDeck == null || _opponentExtraDeck == null)
+				TryBindExtraDecks();
 
 			if (IsTargeting() && (Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonDown(1)))
 			{
@@ -94,13 +112,14 @@ namespace Assets.Scripts
 
 			GlobalLeftClick?.Invoke(Input.mousePosition);
 
-			if (IsPointerOverCemeteryScrollRect())
+			if (IsPointerOverZoneScrollRect())
 				return;
 
-			if (IsPointerOverCemeteryViewCollider())
+			if (IsPointerOverZoneViewCollider())
 				return;
 
 			CemeteryController.DeselectAll();
+			ExtraDeckController.DeselectAll();
 		}
 
 		private void UpdateTargetCursor()
@@ -405,14 +424,81 @@ namespace Assets.Scripts
 			}
 		}
 
+		private void TryBindExtraDecks()
+		{
+			var gc = _gameController;
+			if (gc == null)
+				return;
+
+			var board1 = gc.PlayerBoard1;
+			var board2 = gc.PlayerBoard2;
+			if (board1 == null || board2 == null)
+				return;
+
+			var p1 = board1.Player;
+			var p2 = board2.Player;
+			if (p1 == null || p2 == null)
+				return;
+
+			ExtraDeck local = p1.IsLocalPlayer ? p1.ExtraDeck : p2.ExtraDeck;
+			ExtraDeck opponent = p1.IsLocalPlayer ? p2.ExtraDeck : p1.ExtraDeck;
+			if (local == null || opponent == null)
+				return;
+
+			if (_localExtraDeck == local && _opponentExtraDeck == opponent)
+				return;
+
+			UnsubscribeExtraDeckEvents();
+			_localExtraDeck = local;
+			_opponentExtraDeck = opponent;
+			SubscribeExtraDeckEvents();
+			RebuildAllExtraDeckLists();
+		}
+
+		private void SubscribeExtraDeckEvents()
+		{
+			if (_localExtraDeck != null)
+			{
+				_localExtraDeck.CardAdded += OnAnyExtraDeckChanged;
+				_localExtraDeck.CardRemoved += OnAnyExtraDeckChanged;
+			}
+			if (_opponentExtraDeck != null)
+			{
+				_opponentExtraDeck.CardAdded += OnAnyExtraDeckChanged;
+				_opponentExtraDeck.CardRemoved += OnAnyExtraDeckChanged;
+			}
+		}
+
+		private void UnsubscribeExtraDeckEvents()
+		{
+			if (_localExtraDeck != null)
+			{
+				_localExtraDeck.CardAdded -= OnAnyExtraDeckChanged;
+				_localExtraDeck.CardRemoved -= OnAnyExtraDeckChanged;
+			}
+			if (_opponentExtraDeck != null)
+			{
+				_opponentExtraDeck.CardAdded -= OnAnyExtraDeckChanged;
+				_opponentExtraDeck.CardRemoved -= OnAnyExtraDeckChanged;
+			}
+		}
+
 		private void OnDestroy()
 		{
 			UnsubscribeCemeteryEvents();
+			UnsubscribeExtraDeckEvents();
 		}
 
-		private void OnAnyCemeteryChanged(Card _)
+		private void OnAnyCemeteryChanged(Card changedCard)
 		{
+			_ = changedCard;
 			RebuildAllCemeteryLists();
+		}
+
+		private void OnAnyExtraDeckChanged(Card changedCard)
+		{
+			_ = changedCard;
+			RebuildAllExtraDeckLists();
 		}
 
 		private void RebuildAllCemeteryLists()
@@ -425,6 +511,46 @@ namespace Assets.Scripts
 			RebuildCemeteryList(gc.OpponentCemeteryScrollRect, _opponentCemetery);
 		}
 
+		private void RebuildAllExtraDeckLists()
+		{
+			var gc = _gameController;
+			if (gc == null)
+				return;
+
+			RebuildExtraDeckList(gc.LocalExtraDeckScrollRect, _localExtraDeck);
+			RebuildExtraDeckList(gc.OpponentExtraDeckScrollRect, _opponentExtraDeck);
+		}
+
+		private void RebuildExtraDeckList(ScrollRect scrollRect, ExtraDeck extraDeck)
+		{
+			// Touch an instance field so analyzers don't suggest making this method static.
+			_ = _uiCardPrefab;
+
+			if (scrollRect == null || extraDeck == null)
+				return;
+
+			if (!TryGetContent(scrollRect, out var content))
+				return;
+
+			ClearContent(content);
+
+			var cards = extraDeck.Cards;
+			for (int i = 0; i < cards.Count; i++)			
+			{
+				var card = cards[i];
+				var prefab = GetUIPrefabFor(card);
+				if (prefab == null)
+					continue;
+
+				var item = Instantiate(prefab, content);
+				item.name = $"ExtraDeckCard_{(card != null ? card.Name : "null")}";
+				item.SetActive(true);
+				BindRow(item, card);
+			}
+
+			FinalizeLayout(scrollRect, content);
+		}
+
 		private void RebuildCemeteryList(ScrollRect scrollRect, Cemetery cemetery)
 		{
 			if (scrollRect == null || cemetery == null)
@@ -434,7 +560,6 @@ namespace Assets.Scripts
 				return;
 
 			ClearContent(content);
-			WarnIfLayoutMissing(content);
 			CreateRows(content, cemetery);
 			FinalizeLayout(scrollRect, content);
 		}
@@ -455,16 +580,6 @@ namespace Assets.Scripts
 				Destroy(content.GetChild(i).gameObject);
 		}
 
-		private static void WarnIfLayoutMissing(RectTransform content)
-		{
-			// Layout is expected to be configured in Unity:
-			// - Content should have VerticalLayoutGroup + ContentSizeFitter (vertical = PreferredSize)
-			// - Item prefab should define its own size (LayoutElement) and aspect (AspectRatioFitter)
-			if (content.GetComponent<VerticalLayoutGroup>() == null)
-				Debug.LogWarning("UIController: ScrollRect Content has no VerticalLayoutGroup. Configure it in Unity for one-per-row layout.");
-			if (content.GetComponent<ContentSizeFitter>() == null)
-				Debug.LogWarning("UIController: ScrollRect Content has no ContentSizeFitter. Configure it in Unity so Content expands with rows.");
-		}
 
 		private void CreateRows(RectTransform content, Cemetery cemetery)
 		{
@@ -520,15 +635,18 @@ namespace Assets.Scripts
 			return GetUIPrefabFor(card);
 		}
 
-		private bool IsPointerOverCemeteryScrollRect()
+		private bool IsPointerOverZoneScrollRect()
 		{
 			if (EventSystem.current == null)
 				return false;
 
 			var local = _gameController != null ? _gameController.LocalCemeteryScrollRect : null;
 			var opponent = _gameController != null ? _gameController.OpponentCemeteryScrollRect : null;
+			var localExtra = _gameController != null ? _gameController.LocalExtraDeckScrollRect : null;
+			var opponentExtra = _gameController != null ? _gameController.OpponentExtraDeckScrollRect : null;
+			ScrollRect[] scrollRects = { local, opponent, localExtra, opponentExtra };
 
-			if (local == null && opponent == null)
+			if (!HasAnyScrollRect(scrollRects))
 				return false;
 
 			var eventData = new PointerEventData(EventSystem.current)
@@ -544,17 +662,39 @@ namespace Assets.Scripts
 				Transform t = result.gameObject?.transform;
 				if (t == null)
 					continue;
-
-				if (local != null && t.IsChildOf(local.transform))
-					return true;
-				if (opponent != null && t.IsChildOf(opponent.transform))
+				if (IsChildOfAnyScrollRect(t, scrollRects))
 					return true;
 			}
 
 			return false;
 		}
 
-		private static bool IsPointerOverCemeteryViewCollider()
+		private static bool HasAnyScrollRect(ScrollRect[] scrollRects)
+		{
+			if (scrollRects == null)
+				return false;
+			for (int i = 0; i < scrollRects.Length; i++)
+			{
+				if (scrollRects[i] != null)
+					return true;
+			}
+			return false;
+		}
+
+		private static bool IsChildOfAnyScrollRect(Transform t, ScrollRect[] scrollRects)
+		{
+			if (t == null || scrollRects == null)
+				return false;
+			for (int i = 0; i < scrollRects.Length; i++)
+			{
+				var sr = scrollRects[i];
+				if (sr != null && t.IsChildOf(sr.transform))
+					return true;
+			}
+			return false;
+		}
+
+		private static bool IsPointerOverZoneViewCollider()
 		{
 			var cam = Camera.main;
 			if (cam == null)
@@ -564,7 +704,11 @@ namespace Assets.Scripts
 			if (!Physics.Raycast(ray, out RaycastHit hit, 200f))
 				return false;
 
-			return hit.transform != null && hit.transform.GetComponentInParent<CemeteryView>() != null;
+			if (hit.transform == null)
+				return false;
+
+			return hit.transform.GetComponentInParent<CemeteryView>() != null
+				|| hit.transform.GetComponentInParent<ExtraDeckView>() != null;
 		}
 	}
 }

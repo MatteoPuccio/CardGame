@@ -12,26 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c27349ee911e0c844baa01ef6dc35ac7, type: 3}
   m_Name: DeckPlayer1
   m_EditorClassIdentifier: Assembly-CSharp::Assets.Scripts.CardEngine.Cards.ScriptableDeck
-  _cards:
+  _mainDeckCards:
   - _card: {fileID: 11400000, guid: 4e12fd7680d2f52428b2383506d2158c, type: 2}
     _count: 2
-  - _card: {fileID: 11400000, guid: fdcdb3de361b6e0449e638ca60da63d3, type: 2}
-    _count: 2
-  - _card: {fileID: 11400000, guid: dd5d002d55e3f7948b0c01bfe6a7b5bf, type: 2}
-    _count: 2
-  - _card: {fileID: 11400000, guid: 3fee3ffd2f7c1ae4b9060f1d1454a584, type: 2}
-    _count: 2
-  - _card: {fileID: 11400000, guid: aff9fe1f9301c4a4597db7bc48e3d61a, type: 2}
-    _count: 2
-  - _card: {fileID: 11400000, guid: f7bc9a384d712104e9cf2e94c4d9cf04, type: 2}
-    _count: 2
-  - _card: {fileID: 11400000, guid: d1e35b77f1777274c856739eb6d2aa86, type: 2}
-    _count: 2
-  - _card: {fileID: 11400000, guid: 36fba6c7f673ae246a6f281b8953469a, type: 2}
+  - _card: {fileID: 0}
     _count: 2
   - _card: {fileID: 11400000, guid: a8819b6586109874faea6188b7b93fde, type: 2}
     _count: 2
   - _card: {fileID: 11400000, guid: bbf9059bc7d336c4e976dc5941ff2dbc, type: 2}
     _count: 2
   - _card: {fileID: 11400000, guid: f74e7027b809f7a4f8b11d57a5bc2f50, type: 2}
+    _count: 2
+  _extraDeckCards:
+  - _card: {fileID: 11400000, guid: aff9fe1f9301c4a4597db7bc48e3d61a, type: 2}
+    _count: 2
+  - _card: {fileID: 11400000, guid: aab2565bc8b14dc43b39b29480cda65d, type: 2}
     _count: 2

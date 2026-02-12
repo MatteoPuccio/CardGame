@@ -13,22 +13,19 @@ namespace Assets.Scripts.CardEngine.Effects
 
         /// <summary>
         /// Resolves the effect. Subclasses should override ResolveCore for the actual logic.
-        /// This method ensures context and targets are never null.
+        /// This method ensures context is never null.
         /// </summary>
         public void Resolve(EffectContext effectContext)
         {
             if (effectContext == null)
                 return;
 
-            // Ensure Targets is never null for effect implementations
-            effectContext.Targets ??= new List<ITargetable>();
-            
             ResolveCore(effectContext);
         }
 
         /// <summary>
         /// Override this to implement the effect's logic.
-        /// Context and Targets are guaranteed to be non-null.
+        /// Context is guaranteed to be non-null. Targets is never null (empty list if no targets).
         /// </summary>
         protected virtual void ResolveCore(EffectContext effectContext) { }
 

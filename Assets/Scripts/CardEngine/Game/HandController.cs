@@ -41,22 +41,40 @@ namespace Assets.Scripts.CardEngine.Game
             _hand.CardAdded += OnCardAdded;
             _hand.CardRemoved += OnCardRemoved;
 
-            foreach (var card in _hand.Cards)
-                CreateView(card);
+			bool hidden = _hand?.Owner != null && !_hand.Owner.IsLocalPlayer;
+			foreach (var card in _hand.Cards)
+				CreateView(card, hidden);
             _handView.UpdateCardPositions();
         }
 
         private void OnCardAdded(Card card)
         {
-            // Reuse an existing view if it was already created elsewhere (e.g., moved back from board)
+			bool hidden = _hand?.Owner != null && !_hand.Owner.IsLocalPlayer;
+
+            // Reuse an existing view if it was already created elsewhere (e.g., moved back from board),
+            // but only when the hidden state hasn't changed. If the card was created with the
+            // hidden-card prefab (e.g. while in the deck) and now needs to be visible (local
+            // player's hand), we must destroy the old view and create a fresh one with the
+            // correct prefab.
             if (GameController?.CardViewRegistry != null && GameController.CardViewRegistry.TryGet(card, out var existingView))
             {
-                bindings[card] = existingView;
-                _handView.AddCardView(existingView);
-                return;
+                if (existingView.IsHidden != hidden)
+                {
+                    // Hidden state changed – the old prefab is wrong. Destroy & recreate.
+                    GameController.CardViewRegistry.Unregister(card);
+                    bindings.Remove(card);
+                    DestroyImmediate(existingView.gameObject);
+                }
+                else
+                {
+                    bindings[card] = existingView;
+                    _cardFactory?.ConfigureCardView(existingView, card, hidden);
+                    _handView.AddCardView(existingView);
+                    return;
+                }
             }
 
-            CreateView(card);
+			CreateView(card, hidden);
         }
 
         private void OnCardRemoved(Card card)
@@ -71,12 +89,12 @@ namespace Assets.Scripts.CardEngine.Game
             _handView.RemoveCardView(view);
         }
 
-        private void CreateView(Card card)
+        private void CreateView(Card card, bool hidden)
         {
             if (card == null)
                 return;
 
-            CardView view = _cardFactory.CreateCard(card, _hand.GameState, GameController?.CardViewRegistry);
+            CardView view = _cardFactory.CreateCard(card, _hand.GameState, GameController?.CardViewRegistry, hidden);
             view.SetState(new CardInHandState(_handView));
             bindings[card] = view;
             _handView.AddCardView(view);

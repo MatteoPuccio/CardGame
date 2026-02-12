@@ -26,6 +26,7 @@ namespace Assets.Scripts.CardEngine.Board
         private readonly GameObject _boardInstance;
         private HandController _handController;
         private DeckController _deckController;
+        private ExtraDeckController _extraDeckController;
         private CemeteryController _cemeteryController;
         private RitualZoneController _ritualZoneController;
         private PlayAreaController _playAreaController;
@@ -38,6 +39,7 @@ namespace Assets.Scripts.CardEngine.Board
             : PlayerArea.Opponent.ToString();
         public Player Player => _player;
         public DeckController DeckController => _deckController;
+        public ExtraDeckController ExtraDeckController => _extraDeckController;
         public HandController HandController => _handController;
         public CemeteryController CemeteryController => _cemeteryController;
         public RitualZoneController RitualZoneController => _ritualZoneController;
@@ -112,6 +114,7 @@ namespace Assets.Scripts.CardEngine.Board
 
             CreateHand();
             CreateDeck();
+            CreateExtraDeck();
             CreateCemetery();
             CreateRitualZone();
 
@@ -126,6 +129,7 @@ namespace Assets.Scripts.CardEngine.Board
         {
             _handController = _boardInstance.GetComponentInChildren<HandController>();
             _deckController = _boardInstance.GetComponentInChildren<DeckController>();
+            _extraDeckController = _boardInstance.GetComponentInChildren<ExtraDeckController>();
             _cemeteryController = _boardInstance.GetComponentInChildren<CemeteryController>();
             _ritualZoneController = _boardInstance.GetComponentInChildren<RitualZoneController>();
             _playAreaController = _boardInstance.GetComponentInChildren<PlayAreaController>();
@@ -173,6 +177,42 @@ namespace Assets.Scripts.CardEngine.Board
             _player.Deck = new Deck(owner: _player, gameState: _gameController.GameState);
 
             _deckController.Initialize(_player.Deck);
+        }
+
+        private void CreateExtraDeck()
+        {
+            _player.ExtraDeck = new ExtraDeck(owner: _player, gameState: _gameController.GameState);
+
+            if (_extraDeckController == null)
+            {
+                var playAreaTransform = _boardInstance.transform.Find("PlayArea");
+                var parent = playAreaTransform != null ? playAreaTransform : _boardInstance.transform;
+
+                var extraRoot = new GameObject("ExtraDeck");
+                extraRoot.transform.SetParent(parent, worldPositionStays: false);
+                extraRoot.transform.localPosition = new Vector3(0.35f, 0.01f, -0.55f);
+                extraRoot.transform.localRotation = Quaternion.identity;
+                extraRoot.transform.localScale = Vector3.one;
+
+                // Ensure the view has a collider so it can be clicked.
+                var collider = extraRoot.GetComponent<BoxCollider>();
+                if (collider == null)
+                    collider = extraRoot.AddComponent<BoxCollider>();
+                collider.size = new Vector3(0.6f, 0.05f, 0.9f);
+                collider.center = new Vector3(0f, 0.03f, 0f);
+
+                extraRoot.AddComponent<ExtraDeckView>();
+                _extraDeckController = extraRoot.AddComponent<ExtraDeckController>();
+            }
+
+            _extraDeckController.GameController = _gameController;
+            _extraDeckController.Initialize(_player.ExtraDeck);
+
+            var owned = _player.IsLocalPlayer
+                ? _gameController.LocalExtraDeckScrollRect
+                : _gameController.OpponentExtraDeckScrollRect;
+
+            _extraDeckController.BindScrollRects(owned, startDisabled: true);
         }
 
         private void CreateCemetery()

@@ -26,6 +26,7 @@ namespace Assets.Scripts.CardEngine.Game
             }
         }
         public Deck Deck;
+        public ExtraDeck ExtraDeck;
         public Hand Hand;
         public Cemetery Cemetery;
         public RitualZone Rituals;

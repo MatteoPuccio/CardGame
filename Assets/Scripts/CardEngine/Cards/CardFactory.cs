@@ -3,6 +3,7 @@ using System;
 using UnityEngine;
 using Assets.Scripts.CardEngine.Cards;
 using Assets.Scripts.CardEngine.Game;
+using Assets.Scripts.CardEngine.Cards.Views;
 
 namespace Assets.Scripts.CardEngine.Cards 
 {
@@ -19,6 +20,7 @@ namespace Assets.Scripts.CardEngine.Cards
         }
 
         [SerializeField] private GameObject _cardPrefab;
+        [SerializeField] private GameObject _hiddenCardPrefab;
         [SerializeField] private CardCategoryPrefab[] _prefabsByCategory;
 
         [Header("Deploy Cost Stars")]
@@ -35,7 +37,7 @@ namespace Assets.Scripts.CardEngine.Cards
             _spawnParent = spawnParent;
         }
 
-        public CardView CreateCard(Card card, GameState gameState = null, CardViewRegistry registry = null)
+        public CardView CreateCard(Card card, GameState gameState = null, CardViewRegistry registry = null, bool hidden = false)
         {
             if (card == null)
             {
@@ -43,8 +45,8 @@ namespace Assets.Scripts.CardEngine.Cards
                 return null;
             }
 
-			GameObject prefabToUse = GetPrefabFor(card);
-            Debug.Log($"CardFactory: Creating card view: {card.Name} (category: {card.Behavior?.Category.ToString() ?? "<null>"}, prefab: {(prefabToUse != null ? prefabToUse.name : "<null>")})");
+			GameObject prefabToUse = GetPrefabFor(card, hidden);
+            Debug.Log($"CardFactory: Creating card view: {card.Name} (category: {card.Behavior?.Category.ToString() ?? "<null>"}, hidden: {hidden}, prefab: {(prefabToUse != null ? prefabToUse.name : "<null>")})");
 
             if (prefabToUse == null)
             {
@@ -59,29 +61,62 @@ namespace Assets.Scripts.CardEngine.Cards
             var cardView = cardGO.GetComponent<CardView>();
             if (cardView != null)
             {
-                cardView.CardData = card;
-                cardView.NameText.text = card.Name;
-                cardView.DescriptionText.text = card.EffectText;
-
-                int deployCost = 0;
-                if (card.Behavior is TroopBehavior troop) {
-                    deployCost = troop.DeployCost;
-                    cardView.ApplyDeployCostStars(deployCost, _baseStarMaterial, _filledStarMaterial);
-                    cardView.UpdateTroopStats(troop);
-                    troop.OnStatsChanged += cardView.UpdateTroopStats;
-
-					// Auto-wire attack UI (sword icon) for troops.
-					if (cardGO.GetComponent<AttackSwordPresenter>() == null)
-						cardGO.AddComponent<AttackSwordPresenter>();
-                }
-                
+                ConfigureCardView(cardView, card, hidden);
                 registry?.Register(card, cardView);
             }
             return cardView;
         }
 
-        private GameObject GetPrefabFor(Card card)
+        public void ConfigureCardView(CardView cardView, Card card, bool hidden)
         {
+            if (cardView == null || card == null)
+                return;
+
+            cardView.CardData = card;
+            cardView.SetHidden(hidden);
+
+            // Option C: delegate to optional sub-views when present.
+            var face = cardView.GetComponent<CardFaceText3DView>();
+            if (face != null)
+            {
+                face.Set(card, hidden);
+            }
+            else
+            {
+                // Legacy fallback (older prefabs).
+                if (cardView.NameText != null)
+                    cardView.NameText.text = hidden ? string.Empty : (card.Name ?? string.Empty);
+                if (cardView.DescriptionText != null)
+                    cardView.DescriptionText.text = hidden ? string.Empty : (card.EffectText ?? string.Empty);
+            }
+
+            // Avoid revealing stats/markers on hidden cards.
+            if (hidden)
+            {
+                // Clear ALL TextMeshPro components to ensure no text leaks through
+                // on the hidden prefab, even if fields are not wired.
+                foreach (var tmp in cardView.GetComponentsInChildren<TMPro.TMP_Text>(true))
+                    tmp.text = string.Empty;
+                return;
+            }
+
+            if (card.Behavior is TroopBehavior troop)
+            {
+                cardView.ApplyDeployCostStars(troop.DeployCost, _baseStarMaterial, _filledStarMaterial);
+                cardView.UpdateTroopStats(troop);
+                troop.OnStatsChanged += cardView.UpdateTroopStats;
+
+                // Auto-wire attack UI (sword icon) for troops.
+                if (cardView.gameObject.GetComponent<AttackSwordPresenter>() == null)
+                    cardView.gameObject.AddComponent<AttackSwordPresenter>();
+            }
+        }
+
+        private GameObject GetPrefabFor(Card card, bool hidden)
+        {
+			if (hidden && _hiddenCardPrefab != null)
+				return _hiddenCardPrefab;
+
 			CardType? category = card != null ? card.Category : null;
             if (category != null && _prefabsByCategory != null)
             {

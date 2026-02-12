@@ -29,6 +29,8 @@ namespace Assets.Scripts
         [Header("UI")]
         [SerializeField] private ScrollRect _localCemeteryScrollRect;
         [SerializeField] private ScrollRect _opponentCemeteryScrollRect;
+        [SerializeField] private ScrollRect _localExtraDeckScrollRect;
+        [SerializeField] private ScrollRect _opponentExtraDeckScrollRect;
         [SerializeField] private RapidEffectPromptUI _rapidEffectPromptUI;
         [SerializeField] private OptionalEffectPromptUI _optionalEffectPromptUI;
         [SerializeField] private SelectCardFromZonePromptUI _selectCardFromZonePromptUI;
@@ -55,6 +57,8 @@ namespace Assets.Scripts
         public GameState GameState => _gameState;
 		public ScrollRect LocalCemeteryScrollRect => _localCemeteryScrollRect;
 		public ScrollRect OpponentCemeteryScrollRect => _opponentCemeteryScrollRect;
+        public ScrollRect LocalExtraDeckScrollRect => _localExtraDeckScrollRect;
+        public ScrollRect OpponentExtraDeckScrollRect => _opponentExtraDeckScrollRect;
         public TurnFlow TurnFlow => _turnFlow;
         public RapidEffectChainSystem RapidEffectChain => _rapidEffectChain;
         private EventBus EventBus;
@@ -270,12 +274,37 @@ namespace Assets.Scripts
                 return;
             }
 
-            var entries = deck.Cards;
-            if (entries == null || entries.Count == 0)
+            LoadSplitDeckFromScriptable(owner, deck, gameState);
+        }
+
+        private static void LoadSplitDeckFromScriptable(Player owner, ScriptableDeck deck, GameState gameState)
+        {
+            var mainEntries = deck.MainDeckCards;
+            var extraEntries = deck.ExtraDeckCards;
+
+            bool hasAnyEntries =
+                (mainEntries != null && mainEntries.Count > 0)
+                || (extraEntries != null && extraEntries.Count > 0);
+
+            if (!hasAnyEntries)
             {
                 Debug.LogWarning($"GameController: ScriptableDeck '{deck.name}' is empty.");
                 return;
             }
+
+            if (mainEntries != null)
+                AddEntriesToMainDeck(owner, deck, mainEntries, gameState);
+
+            if (extraEntries != null)
+                AddEntriesToExtraDeck(owner, deck, extraEntries, gameState);
+
+            owner.Deck.Shuffle();
+        }
+
+        private static void AddEntriesToMainDeck(Player owner, ScriptableDeck deck, System.Collections.Generic.IReadOnlyList<ScriptableDeck.Entry> entries, GameState gameState)
+        {
+            if (entries == null || entries.Count == 0)
+                return;
 
             foreach (var entry in entries)
             {
@@ -285,18 +314,42 @@ namespace Assets.Scripts
                 var cardAsset = entry.Card;
                 if (cardAsset == null)
                 {
-                    Debug.LogWarning($"GameController: Deck '{deck.name}' contains a null card reference.");
+                    Debug.LogWarning($"GameController: Deck '{deck.name}' (Main Deck) contains a null card reference.");
                     continue;
                 }
 
                 int count = entry.Count <= 0 ? 1 : entry.Count;
-                AddCopiesToDeck(owner, cardAsset, count, gameState);
+                AddCopiesToMainDeckOnly(owner, cardAsset, count, gameState);
             }
-            owner.Deck.Shuffle();
         }
 
-        private static void AddCopiesToDeck(Player owner, ScriptableCard cardAsset, int count, GameState gameState)
+        private static void AddEntriesToExtraDeck(Player owner, ScriptableDeck deck, System.Collections.Generic.IReadOnlyList<ScriptableDeck.Entry> entries, GameState gameState)
         {
+            if (entries == null || entries.Count == 0)
+                return;
+
+            foreach (var entry in entries)
+            {
+                if (entry == null)
+                    continue;
+
+                var cardAsset = entry.Card;
+                if (cardAsset == null)
+                {
+                    Debug.LogWarning($"GameController: Deck '{deck.name}' (Extra Deck) contains a null card reference.");
+                    continue;
+                }
+
+                int count = entry.Count <= 0 ? 1 : entry.Count;
+                AddCopiesToExtraDeckOnly(owner, cardAsset, count, gameState);
+            }
+        }
+
+        private static void AddCopiesToMainDeckOnly(Player owner, ScriptableCard cardAsset, int count, GameState gameState)
+        {
+            if (owner?.Deck == null || cardAsset == null)
+                return;
+
             string baseId = string.IsNullOrWhiteSpace(cardAsset.id) ? cardAsset.name : cardAsset.id;
 
             for (int i = 0; i < count; i++)
@@ -309,6 +362,40 @@ namespace Assets.Scripts
                     card.Id = $"{baseId}_{i + 1}";
 
                 owner.Deck.AddCard(card);
+            }
+        }
+
+        private static void AddCopiesToExtraDeckOnly(Player owner, ScriptableCard cardAsset, int count, GameState gameState)
+        {
+            if (cardAsset == null)
+                return;
+
+            if (owner?.ExtraDeck == null)
+            {
+                Debug.LogWarning($"GameController: Tried to add '{cardAsset.name}' to Extra Deck but owner.ExtraDeck is null.");
+                return;
+            }
+
+            string baseId = string.IsNullOrWhiteSpace(cardAsset.id) ? cardAsset.name : cardAsset.id;
+
+            for (int i = 0; i < count; i++)
+            {
+                var card = cardAsset.CreateRuntimeCard(owner, gameState);
+                if (card == null)
+                    continue;
+
+                if (count > 1)
+                    card.Id = $"{baseId}_{i + 1}";
+
+                // Enforce the rule: only Ritual/Avatar belong in the Extra Deck.
+                if (card.Category != CardType.Ritual && card.Category != CardType.Avatar)
+                {
+                    Debug.LogWarning($"GameController: '{card.Name}' is '{card.Category}' and cannot be placed in Extra Deck (Deck asset: '{cardAsset.name}').");
+                    continue;
+                }
+
+                if (!owner.ExtraDeck.EnterCard(card))
+                    Debug.LogWarning($"GameController: Failed to place '{card.Name}' into Extra Deck.");
             }
         }
 

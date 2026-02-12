@@ -57,9 +57,22 @@ namespace Assets.Scripts.CardEngine.Game
         {
             if (GameController?.CardViewRegistry != null && GameController.CardViewRegistry.TryGet(card, out var existingView))
             {
-                bindings[card] = existingView;
-                _deckView.AddCardView(existingView);
-                return;
+                // The card may have been visible (e.g. in hand). Deck cards are always hidden,
+                // so if the existing view was visible we must destroy it and create a fresh
+                // hidden-prefab view.
+                if (!existingView.IsHidden)
+                {
+                    GameController.CardViewRegistry.Unregister(card);
+                    bindings.Remove(card);
+                    DestroyImmediate(existingView.gameObject);
+                }
+                else
+                {
+                    bindings[card] = existingView;
+                    _cardFactory?.ConfigureCardView(existingView, card, hidden: true);
+                    _deckView.AddCardView(existingView);
+                    return;
+                }
             }
 
             CreateView(card);
@@ -82,7 +95,7 @@ namespace Assets.Scripts.CardEngine.Game
             if (card == null)
                 return;
 
-            CardView cardView = _cardFactory.CreateCard(card, _deck.GameState, GameController?.CardViewRegistry);
+            CardView cardView = _cardFactory.CreateCard(card, _deck.GameState, GameController?.CardViewRegistry, hidden: true);
             cardView.SetState(new CardInDeckState(_deckView));
             bindings[card] = cardView;
             _deckView.AddCardView(cardView);

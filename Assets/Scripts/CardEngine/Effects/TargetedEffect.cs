@@ -58,33 +58,25 @@ namespace Assets.Scripts.CardEngine.Effects
             if (context == null)
                 return;
 
-            var previousTargets = context.Targets;
-            try
+            List<ITargetable> targetsToUse;
+            if (_chosenTargets != null)
+                targetsToUse = _chosenTargets;
+            else if (context.Targets != null && context.Targets.Count > 0)
+                targetsToUse = new List<ITargetable>(context.Targets);
+            else
+                targetsToUse = _selector?.Select(context) ?? new List<ITargetable>();
+
+            targetsToUse = CardApplicabilityRules.FilterTargets(context, targetsToUse);
+
+            var targetedContext = context.WithTargets(targetsToUse);
+
+            if (_effect is ITargetingEffect targeting)
             {
-                List<ITargetable> targetsToUse;
-                if (_chosenTargets != null)
-                    targetsToUse = _chosenTargets;
-                else if (previousTargets != null && previousTargets.Count > 0)
-                    targetsToUse = previousTargets;
-                else
-                    targetsToUse = _selector?.Select(context) ?? new List<ITargetable>();
-
-                targetsToUse = CardApplicabilityRules.FilterTargets(context, targetsToUse);
-
-                context.Targets = targetsToUse;
-
-                if (_effect is ITargetingEffect targeting)
-                {
-                    targeting.ResolveAfterTargets(context);
-                    return;
-                }
-
-                _effect?.Resolve(context);
+                targeting.ResolveAfterTargets(targetedContext);
+                return;
             }
-            finally
-            {
-                context.Targets = previousTargets;
-            }
+
+            _effect?.Resolve(targetedContext);
         }
 
         public List<ITargetable> GetCandidates(EffectContext effectContext)
@@ -171,16 +163,8 @@ namespace Assets.Scripts.CardEngine.Effects
 
             if (_stage == Stage.NeedChildTargets && _childTargeting != null && !_childTargeting.IsComplete)
             {
-                var previousTargets = context.Targets;
-                try
-                {
-                    context.Targets = _chosenTargets;
-                    _childTargeting.ApplyTargets(context, targets);
-                }
-                finally
-                {
-                    context.Targets = previousTargets;
-                }
+                var targetedContext = context.WithTargets(_chosenTargets);
+                _childTargeting.ApplyTargets(targetedContext, targets);
             }
         }
 
@@ -195,30 +179,22 @@ namespace Assets.Scripts.CardEngine.Effects
                 return false;
             }
 
-            var previousTargets = context.Targets;
-            try
-            {
-                context.Targets = _chosenTargets;
+            var targetedContext = context.WithTargets(_chosenTargets);
 
-                while (!_childTargeting.IsComplete)
+            while (!_childTargeting.IsComplete)
+            {
+                if (_childTargeting.TryGetTargetRequest(targetedContext, out candidates, out cancelReason))
+                    return true;
+
+                if (!string.IsNullOrEmpty(cancelReason))
                 {
-                    if (_childTargeting.TryGetTargetRequest(context, out candidates, out cancelReason))
-                        return true;
-
-                    if (!string.IsNullOrEmpty(cancelReason))
-                    {
-                        _stage = Stage.Complete;
-                        return false;
-                    }
+                    _stage = Stage.Complete;
+                    return false;
                 }
+            }
 
-                _stage = Stage.Complete;
-                return false;
-            }
-            finally
-            {
-                context.Targets = previousTargets;
-            }
+            _stage = Stage.Complete;
+            return false;
         }
     }
 

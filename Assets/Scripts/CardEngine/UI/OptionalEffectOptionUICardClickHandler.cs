@@ -20,9 +20,6 @@ namespace Assets.Scripts.CardEngine.UI
             if (eventData == null || eventData.button != PointerEventData.InputButton.Left)
                 return false;
 
-            if (view != null && view.CardData != null)
-                CardPreviewController.Show(view.CardData);
-
             _ui?.SelectOption(_option);
             return true;
         }

@@ -147,9 +147,20 @@ namespace Assets.Scripts.CardEngine.Game
 
 			if (GameController?.CardViewRegistry != null && GameController.CardViewRegistry.TryGet(card, out var existingView))
 			{
-				_bindings[card] = existingView;
-				_cemeteryView.AddCardView(existingView);
-				return;
+				// Cemetery cards are visible. If the view was hidden (e.g. from
+				// extra deck), destroy and recreate with the correct prefab.
+				if (existingView.IsHidden)
+				{
+					GameController.CardViewRegistry.Unregister(card);
+					_bindings.Remove(card);
+					DestroyImmediate(existingView.gameObject);
+				}
+				else
+				{
+					_bindings[card] = existingView;
+					_cemeteryView.AddCardView(existingView);
+					return;
+				}
 			}
 
 			var view = _cardFactory.CreateCard(card, _cemetery.GameState, GameController?.CardViewRegistry);

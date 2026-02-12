@@ -226,6 +226,43 @@ namespace Assets.Scripts.CardEngine.Game
             return true;
         }
 
+        private static bool TryValidateMoveArgs(Card card, ICardZone fromZone, ICardZone toZone, out Player owner)
+        {
+            owner = null;
+
+            if (card == null || toZone == null || fromZone == null)
+                return false;
+
+            owner = card.Owner;
+            return owner != null;
+        }
+
+        private static ICardZone ResolveExtraDeckReturnDestination(
+            Card card,
+            Player owner,
+            ICardZone toZone,
+            ICardInteractionState interactionState)
+        {
+            if (card == null || owner == null || toZone == null)
+                return toZone;
+
+            // Extra deck rule: effect-driven returns to Deck/Hand should go back to ExtraDeck.
+            // We only apply this to effect-driven moves (interactionState == null) to avoid breaking
+            // direct player interactions like shift-clicking cards in the cemetery UI.
+            if (interactionState != null)
+                return toZone;
+
+            if (owner.ExtraDeck == null)
+                return toZone;
+
+            bool isExtraDeckCard = card.Category == CardType.Ritual || card.Category == CardType.Avatar;
+            if (!isExtraDeckCard)
+                return toZone;
+
+            bool isReturningToMainDeckOrHand = toZone is Deck || toZone is Hand;
+            return isReturningToMainDeckOrHand ? owner.ExtraDeck : toZone;
+        }
+
         public bool MoveToZone(
             Card card,
             ICardZone fromZone,
@@ -234,15 +271,16 @@ namespace Assets.Scripts.CardEngine.Game
             bool ignoreDeployCost = false)
         {
             Debug.Log("InteractionState: " + (interactionState == null ? "null" : interactionState.Name));
-            if (card == null || toZone == null || fromZone == null) {
+            if (!TryValidateMoveArgs(card, fromZone, toZone, out Player owner))
+            {
                 Debug.LogError($"Card: {(card == null ? "null" : card.Name)}, FromZone: {(fromZone == null ? "null" : fromZone.ZoneName)}, ToZone: {(toZone == null ? "null" : toZone.ZoneName)}");
                 return false;
             }
-            Player owner = card.Owner;
-            if (owner == null)
-            {
-                return false;
-            }
+
+            toZone = ResolveExtraDeckReturnDestination(card, owner, toZone, interactionState);
+
+            if (ReferenceEquals(fromZone, toZone))
+                return true;
 
             if (!TryValidateMove(card, owner, fromZone, toZone, interactionState, ignoreDeployCost, out int deployCost))
                 return false;

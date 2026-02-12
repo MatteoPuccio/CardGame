@@ -17,7 +17,9 @@ MonoBehaviour:
   effectText: 'Play: Refund 1 Deploy Point for every "Skittering" troop on the field.
 
     Death:
-    Play 1 "Skittering" troop from your hand.'
+    Play 1 "Skittering" troop from your hand.
+
+    Taunt'
   category: 0
   tags:
   - Skittering

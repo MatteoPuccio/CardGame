@@ -22,6 +22,7 @@ namespace Assets.Scripts.CardEngine.Effects
         Hand,
         Cemetery,
         Deck,
+        ExtraDeck,
         Rituals,
     }
 
@@ -169,6 +170,7 @@ namespace Assets.Scripts.CardEngine.Effects
                 TutorDestinationZone.Hand => player.Hand,
                 TutorDestinationZone.Cemetery => player.Cemetery,
                 TutorDestinationZone.Deck => player.Deck,
+                TutorDestinationZone.ExtraDeck => player.ExtraDeck,
                 TutorDestinationZone.Rituals => player.Rituals,
                 _ => null,
             };

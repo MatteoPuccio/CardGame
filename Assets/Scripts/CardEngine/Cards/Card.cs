@@ -105,12 +105,11 @@ namespace Assets.Scripts.CardEngine.Cards
             if (Category == CardType.Ritual && GameState != null && GameState.Phase != Game.TurnPhase.Ritual)
                 return false;
 
-            var context = new EffectContext
-            {
-                Source = this,
-                GameState = GameState,
-                Targets = null,
-            };
+            var context = new EffectContext(
+                source: this,
+                gameState: GameState,
+                targets: null
+            );
 
             var playRootEffect = BuildPlayRootEffect(playEffectsOverride);
 
